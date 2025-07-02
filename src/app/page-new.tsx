@@ -6,12 +6,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from 'sonner'
 
 export default function HomePage() {
   const [isLoading, setIsLoading] = useState(false)
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  const [selectedRole, setSelectedRole] = useState('')
   const router = useRouter()
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -61,6 +63,7 @@ export default function HomePage() {
   }
 
   const handleQuickAccess = (role: string) => {
+    setSelectedRole(role)
     switch (role) {
       case 'DISPLAY':
         router.push('/display')

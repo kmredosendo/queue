@@ -1,0 +1,114 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  USER
+  DISPLAY
+  RESERVATION
+}
+
+enum QueueStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum QueueItemStatus {
+  WAITING
+  CALLED
+  SERVED
+  MISSED
+}
+
+model User {
+  id        String   @id @default(cuid())
+  username  String   @unique
+  password  String
+  role      UserRole
+  name      String
+  email     String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relationship with assigned lanes (for cashiers)
+  assignedLanes LaneUser[]
+  
+  // Queue operations performed
+  queueOperations QueueOperation[]
+
+  @@map("users")
+}
+
+model Lane {
+  id          String      @id @default(cuid())
+  name        String
+  description String?
+  isActive    Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  // Current queue number
+  currentNumber Int @default(0)
+  
+  // Last served number
+  lastServedNumber Int @default(0)
+
+  // Relationships
+  assignedUsers LaneUser[]
+  queueItems    QueueItem[]
+  queueOperations QueueOperation[]
+
+  @@map("lanes")
+}
+
+model LaneUser {
+  id     String @id @default(cuid())
+  userId String
+  laneId String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lane Lane @relation(fields: [laneId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, laneId])
+  @@map("lane_users")
+}
+
+model QueueItem {
+  id        String          @id @default(cuid())
+  laneId    String
+  number    Int
+  status    QueueItemStatus @default(WAITING)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+  servedAt  DateTime?
+  calledAt  DateTime?
+
+  lane Lane @relation(fields: [laneId], references: [id], onDelete: Cascade)
+
+  @@unique([laneId, number])
+  @@map("queue_items")
+}
+
+model QueueOperation {
+  id        String   @id @default(cuid())
+  userId    String
+  laneId    String
+  action    String   // 'NEXT', 'CALL', 'BUZZ', 'SKIP'
+  number    Int?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+  lane Lane @relation(fields: [laneId], references: [id])
+
+  @@map("queue_operations")
+}
