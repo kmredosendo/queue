@@ -6,28 +6,31 @@ import bcrypt from 'bcryptjs'
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const resolvedParams = await params
     const currentUser = await getCurrentUser(request)
     if (!currentUser || !hasRole(currentUser.role, [UserRole.ADMIN])) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { name, email, role, password, isActive } = await request.json()
-    const userId = params.id
+    const { name, role, password, isActive } = await request.json()
+    const userId = parseInt(resolvedParams.id)
+
+    if (isNaN(userId)) {
+      return NextResponse.json({ error: 'Invalid user ID' }, { status: 400 })
+    }
 
     // Prepare update data
     const updateData: {
       name?: string
-      email?: string
       role?: UserRole
       password?: string
       isActive?: boolean
     } = {}
     
     if (name !== undefined) updateData.name = name
-    if (email !== undefined) updateData.email = email
     if (role !== undefined) updateData.role = role
     if (isActive !== undefined) updateData.isActive = isActive
     

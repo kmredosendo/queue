@@ -55,7 +55,6 @@ export async function POST(request: NextRequest) {
         username: user.username,
         name: user.name,
         role: user.role,
-        email: user.email,
         assignedLanes: user.assignedLanes
       },
       token

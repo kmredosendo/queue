@@ -15,8 +15,8 @@ export async function GET(request: NextRequest) {
         id: true,
         username: true,
         name: true,
-        email: true,
         role: true,
+        isActive: true,
         createdAt: true,
         assignedLanes: {
           include: {
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { username, password, name, email, role } = await request.json()
+    const { username, password, name, role } = await request.json()
 
     if (!username || !password || !name || !role) {
       return NextResponse.json(
@@ -73,14 +73,12 @@ export async function POST(request: NextRequest) {
         username,
         password: hashedPassword,
         name,
-        email,
         role: role as UserRole
       },
       select: {
         id: true,
         username: true,
         name: true,
-        email: true,
         role: true,
         createdAt: true
       }

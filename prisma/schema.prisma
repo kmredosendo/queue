@@ -13,8 +13,6 @@ datasource db {
 enum UserRole {
   ADMIN
   USER
-  DISPLAY
-  RESERVATION
 }
 
 enum QueueStatus {
@@ -30,12 +28,11 @@ enum QueueItemStatus {
 }
 
 model User {
-  id        String   @id @default(cuid())
+  id        Int      @id @default(autoincrement())
   username  String   @unique
   password  String
   role      UserRole
   name      String
-  email     String?
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -50,7 +47,7 @@ model User {
 }
 
 model Lane {
-  id          String      @id @default(cuid())
+  id          Int         @id @default(autoincrement())
   name        String
   description String?
   isActive    Boolean     @default(true)
@@ -72,9 +69,9 @@ model Lane {
 }
 
 model LaneUser {
-  id     String @id @default(cuid())
-  userId String
-  laneId String
+  id     Int @id @default(autoincrement())
+  userId Int
+  laneId Int
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   lane Lane @relation(fields: [laneId], references: [id], onDelete: Cascade)
@@ -84,8 +81,8 @@ model LaneUser {
 }
 
 model QueueItem {
-  id        String          @id @default(cuid())
-  laneId    String
+  id        Int             @id @default(autoincrement())
+  laneId    Int
   number    Int
   status    QueueItemStatus @default(WAITING)
   createdAt DateTime        @default(now())
@@ -100,9 +97,9 @@ model QueueItem {
 }
 
 model QueueOperation {
-  id        String   @id @default(cuid())
-  userId    String
-  laneId    String
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  laneId    Int
   action    String   // 'NEXT', 'CALL', 'BUZZ', 'SKIP'
   number    Int?
   createdAt DateTime @default(now())

@@ -6,14 +6,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from 'sonner'
 
 export default function HomePage() {
   const [isLoading, setIsLoading] = useState(false)
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
-  const [selectedRole, setSelectedRole] = useState('')
   const router = useRouter()
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -59,18 +57,6 @@ export default function HomePage() {
       toast.error('Network error. Please try again.')
     } finally {
       setIsLoading(false)
-    }
-  }
-
-  const handleQuickAccess = (role: string) => {
-    setSelectedRole(role)
-    switch (role) {
-      case 'DISPLAY':
-        router.push('/display')
-        break
-      case 'RESERVATION':
-        router.push('/reservation')
-        break
     }
   }
 
@@ -126,7 +112,7 @@ export default function HomePage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <Button
-                onClick={() => handleQuickAccess('RESERVATION')}
+                onClick={() => router.push('/reservation')}
                 className="w-full h-16 text-lg"
                 variant="outline"
               >
@@ -134,7 +120,7 @@ export default function HomePage() {
                 <span className="block text-sm text-gray-500">Get your queue number</span>
               </Button>
               <Button
-                onClick={() => handleQuickAccess('DISPLAY')}
+                onClick={() => router.push('/display')}
                 className="w-full h-16 text-lg"
                 variant="outline"
               >

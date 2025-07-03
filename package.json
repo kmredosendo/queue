@@ -5,12 +5,20 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:production": "node build-production.js",
     "start": "next start",
+    "start:silent": "pm2 start ecosystem.config.js",
+    "stop": "pm2 stop queue-system",
+    "restart": "pm2 restart queue-system",
+    "status": "pm2 status",
+    "logs": "pm2 logs queue-system",
     "lint": "next lint",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
-    "db:seed": "tsx scripts/seed.ts"
+    "db:migrate:deploy": "prisma migrate deploy",
+    "db:seed": "tsx scripts/seed.ts",
+    "seed": "tsx scripts/seed.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.1.1",
@@ -31,12 +39,14 @@
     "next": "15.3.4",
     "next-themes": "^0.4.6",
     "node-thermal-printer": "^4.5.0",
+    "pm2": "^5.4.3",
     "prisma": "^6.11.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-hook-form": "^7.59.0",
     "sonner": "^2.0.5",
     "tailwind-merge": "^3.3.1",
+    "tsx": "^4.20.3",
     "zod": "^3.25.67"
   },
   "devDependencies": {

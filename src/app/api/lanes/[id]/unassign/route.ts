@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { getCurrentUser, hasRole } from '@/lib/auth'
 import { UserRole } from '@prisma/client'
 
-export async function PATCH(
+export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -14,27 +14,47 @@ export async function PATCH(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { name, description, isActive } = await request.json()
+    const { userId } = await request.json()
     const laneId = parseInt(resolvedParams.id)
 
     if (isNaN(laneId)) {
       return NextResponse.json({ error: 'Invalid lane ID' }, { status: 400 })
     }
 
-    // Prepare update data
-    const updateData: {
-      name?: string
-      description?: string
-      isActive?: boolean
-    } = {}
-    
-    if (name !== undefined) updateData.name = name
-    if (description !== undefined) updateData.description = description
-    if (isActive !== undefined) updateData.isActive = isActive
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'User ID is required' },
+        { status: 400 }
+      )
+    }
 
-    const updatedLane = await prisma.lane.update({
+    // Check if assignment exists
+    const existingAssignment = await prisma.laneUser.findUnique({
+      where: {
+        userId_laneId: {
+          userId: parseInt(userId),
+          laneId
+        }
+      }
+    })
+
+    if (!existingAssignment) {
+      return NextResponse.json(
+        { error: 'User is not assigned to this lane' },
+        { status: 404 }
+      )
+    }
+
+    // Remove the assignment
+    await prisma.laneUser.delete({
+      where: {
+        id: existingAssignment.id
+      }
+    })
+
+    // Return updated lane with assignments
+    const updatedLane = await prisma.lane.findUnique({
       where: { id: laneId },
-      data: updateData,
       include: {
         assignedUsers: {
           include: {
@@ -47,24 +67,16 @@ export async function PATCH(
               }
             }
           }
-        },
-        queueItems: {
-          where: {
-            status: {
-              in: ['WAITING', 'CALLED']
-            }
-          },
-          select: {
-            number: true,
-            status: true
-          }
         }
       }
     })
 
-    return NextResponse.json(updatedLane)
+    return NextResponse.json({ 
+      message: 'User unassigned from lane successfully',
+      lane: updatedLane
+    })
   } catch (error) {
-    console.error('Error updating lane:', error)
+    console.error('Error unassigning user from lane:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

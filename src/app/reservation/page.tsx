@@ -73,34 +73,8 @@ export default function ReservationPage() {
         setCurrentTicket(data)
         setShowTicket(true)
         
-        // Attempt to print the queue number
-        try {
-          const printResponse = await fetch('/api/printer/print-queue', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              queueNumber: data.queueNumber,
-              laneName: data.laneName,
-              estimatedWait: data.estimatedWait,
-              currentNumber: data.currentNumber,
-              waitingCount: data.waitingCount
-            }),
-          })
-
-          if (printResponse.ok) {
-            toast.success(`Queue number ${data.queueNumber} printed and assigned for ${data.laneName}`)
-          } else {
-            // Still show success even if print fails
-            toast.success(`Queue number ${data.queueNumber} assigned for ${data.laneName}`)
-            toast.warning('Print failed - please take note of your queue number')
-          }
-        } catch (printError) {
-          console.error('Print error:', printError)
-          toast.success(`Queue number ${data.queueNumber} assigned for ${data.laneName}`)
-          toast.warning('Printer unavailable - please take note of your queue number')
-        }
+        // Show success message
+        toast.success(`Queue number ${data.queueNumber} assigned for ${data.laneName}`)
         
         fetchLaneStatus() // Refresh status
       } else {
@@ -112,39 +86,6 @@ export default function ReservationPage() {
       toast.error('Network error. Please try again.')
     } finally {
       setIsGettingNumber(false)
-    }
-  }
-
-  const printTicket = async () => {
-    if (!currentTicket) return
-
-    try {
-      const response = await fetch('/api/printer/print-queue', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          queueNumber: currentTicket.queueNumber,
-          laneName: currentTicket.laneName,
-          estimatedWait: currentTicket.estimatedWait,
-          currentNumber: currentTicket.currentNumber,
-          waitingCount: currentTicket.waitingCount
-        }),
-      })
-
-      if (response.ok) {
-        toast.success('Ticket printed successfully!')
-      } else {
-        // Fallback to browser print
-        toast.warning('Thermal printer unavailable, using browser print')
-        window.print()
-      }
-    } catch (error) {
-      console.error('Print error:', error)
-      // Fallback to browser print
-      toast.warning('Thermal printer unavailable, using browser print')
-      window.print()
     }
   }
 
@@ -349,9 +290,6 @@ export default function ReservationPage() {
 
               {/* Actions */}
               <div className="flex gap-3 print:hidden">
-                <Button onClick={printTicket} variant="outline" className="flex-1">
-                  🖨️ Print Ticket
-                </Button>
                 <Button onClick={() => setShowTicket(false)} className="flex-1">
                   Done
                 </Button>

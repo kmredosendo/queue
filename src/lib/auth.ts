@@ -5,7 +5,7 @@ import { prisma } from './prisma'
 import { UserRole } from '@prisma/client'
 
 export interface JWTPayload {
-  userId: string
+  userId: number
   username: string
   role: UserRole
 }
@@ -39,7 +39,7 @@ export async function authenticateRequest(request: NextRequest): Promise<JWTPayl
     }
 
     return verifyJWT(token)
-  } catch (error) {
+  } catch {
     return null
   }
 }
