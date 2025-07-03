@@ -5,7 +5,7 @@ import { prisma } from './prisma'
 import { UserRole } from '@prisma/client'
 
 export interface JWTPayload {
-  userId: number
+  userId: number | string // Temporary: handle both old string IDs and new integer IDs
   username: string
   role: UserRole
 }
@@ -48,18 +48,37 @@ export async function getCurrentUser(request: NextRequest) {
   const payload = await authenticateRequest(request)
   if (!payload) return null
 
-  const user = await prisma.user.findUnique({
-    where: { id: payload.userId },
-    include: {
-      assignedLanes: {
-        include: {
-          lane: true
+  try {
+    // Handle transition from string IDs to integer IDs
+    let userId: number
+    if (typeof payload.userId === 'string') {
+      // If it's a string (old token), check if it's a CUID (old format)
+      const parsed = parseInt(payload.userId, 10)
+      if (isNaN(parsed) || payload.userId.length > 10) {
+        // This is likely an old CUID string, treat as invalid token
+        return null
+      }
+      userId = parsed
+    } else {
+      userId = payload.userId
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        assignedLanes: {
+          include: {
+            lane: true
+          }
         }
       }
-    }
-  })
+    })
 
-  return user
+    return user
+  } catch {
+    // If there's any database error, the token might be from the old schema
+    return null
+  }
 }
 
 export function hasRole(userRole: UserRole, allowedRoles: UserRole[]): boolean {

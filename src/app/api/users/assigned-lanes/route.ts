@@ -10,8 +10,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Get user's assigned lane (single lane only) with queue details
-    const assignedLane = await prisma.laneUser.findFirst({
+    // Get all user's assigned lanes with queue details
+    const assignedLanes = await prisma.laneUser.findMany({
       where: {
         userId: currentUser.id,
         lane: {
@@ -33,21 +33,27 @@ export async function GET(request: NextRequest) {
             }
           }
         }
+      },
+      orderBy: {
+        lane: {
+          type: 'asc' // Regular lanes first, then PWD_SENIOR
+        }
       }
     })
 
-    // Transform the data to match the Lane interface - return array for consistency  
-    const lanes = assignedLane ? [{
-      id: assignedLane.lane.id,
-      name: assignedLane.lane.name,
-      description: assignedLane.lane.description,
-      currentNumber: assignedLane.lane.currentNumber,
-      lastServedNumber: assignedLane.lane.lastServedNumber,
-      queueItems: assignedLane.lane.queueItems.map((item: { number: number; status: string }) => ({
+    // Transform the data to match the Lane interface
+    const lanes = assignedLanes.map(assignment => ({
+      id: assignment.lane.id,
+      name: assignment.lane.name,
+      description: assignment.lane.description,
+      type: assignment.lane.type,
+      currentNumber: assignment.lane.currentNumber,
+      lastServedNumber: assignment.lane.lastServedNumber,
+      queueItems: assignment.lane.queueItems.map((item: { number: number; status: string }) => ({
         number: item.number,
         status: item.status
       }))
-    }] : []
+    }))
 
     return NextResponse.json(lanes)
   } catch (error) {

@@ -101,8 +101,8 @@ export default function ReservationPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
-          <p className="mt-4 text-gray-600">Loading services...</p>
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600"></div>
+          <p className="mt-3 text-gray-600 text-sm">Loading services...</p>
         </div>
       </div>
     )
@@ -110,94 +110,94 @@ export default function ReservationPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      {/* Header */}
+      {/* Compact Header */}
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
+          <div className="flex justify-between items-center py-3">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Get Your Queue Number</h1>
-              <p className="text-gray-600 mt-1">Select a service to join the queue</p>
+              <h1 className="text-xl font-bold text-gray-900">Get Your Queue Number</h1>
+              <p className="text-gray-600 text-sm">Select a service to join the queue</p>
             </div>
-            <Button onClick={() => window.location.href = '/'} variant="outline">
+            <Button onClick={() => window.location.href = '/'} variant="outline" size="sm">
               Back to Home
             </Button>
           </div>
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Service Selection */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        {/* Compact Service Selection - Responsive Grid */}
+        <div className={`grid gap-3 ${
+          lanes.length === 1 ? 'grid-cols-1 max-w-md mx-auto' :
+          lanes.length === 2 ? 'grid-cols-1 md:grid-cols-2' :
+          lanes.length === 3 ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' :
+          lanes.length === 4 ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4' :
+          'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
+        }`}>
           {lanes.map((lane) => (
             <Card 
               key={lane.id}
-              className="hover:shadow-lg transition-all duration-200 hover:scale-105 cursor-pointer"
+              className="hover:shadow-lg transition-all duration-200 hover:scale-[1.02] cursor-pointer border-2"
             >
-              <CardHeader className="pb-4">
-                <CardTitle className="flex items-center justify-between text-xl">
-                  {lane.name}
-                  <Badge className="bg-green-100 text-green-800">
-                    Open
-                  </Badge>
-                </CardTitle>
-                <CardDescription className="text-sm">
-                  {lane.description || 'Service available'}
-                </CardDescription>
+              <CardHeader className="pb-2 pt-3 px-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base font-semibold">{lane.name}</CardTitle>
+                  <Badge className="bg-green-100 text-green-800 text-xs">Open</Badge>
+                </div>
+                {lane.description && (
+                  <CardDescription className="text-xs text-gray-600">
+                    {lane.description}
+                  </CardDescription>
+                )}
               </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Current Status */}
-                <div className="bg-gray-50 rounded-lg p-4 space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Now Serving:</span>
-                    <span className="text-2xl font-bold text-blue-600">
-                      {lane.currentNumber === 0 ? '-' : lane.currentNumber}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Your Number:</span>
-                    <span className="text-lg font-semibold text-purple-600">
-                      {lane.nextNumber}
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4 pt-2">
+              
+              <CardContent className="p-3 pt-0">
+                {/* Compact Status Grid */}
+                <div className="bg-gray-50 rounded-lg p-3 mb-3">
+                  <div className="grid grid-cols-2 gap-3 mb-2">
                     <div className="text-center">
-                      <div className="text-lg font-medium text-orange-600">
-                        {lane.waitingCount}
+                      <div className="text-lg font-bold text-blue-600">
+                        {lane.currentNumber === 0 ? '-' : lane.currentNumber}
                       </div>
+                      <div className="text-xs text-gray-600">Now Serving</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-lg font-bold text-purple-600">{lane.nextNumber}</div>
+                      <div className="text-xs text-gray-600">Your Number</div>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-3 gap-2 text-center">
+                    <div>
+                      <div className="text-sm font-medium text-orange-600">{lane.waitingCount}</div>
                       <div className="text-xs text-gray-500">Waiting</div>
                     </div>
-                    <div className="text-center">
-                      <div className="text-lg font-medium text-green-600">
-                        {lane.calledCount}
-                      </div>
+                    <div>
+                      <div className="text-sm font-medium text-green-600">{lane.calledCount}</div>
                       <div className="text-xs text-gray-500">Called</div>
+                    </div>
+                    <div>
+                      <div className="text-sm font-medium text-indigo-600">
+                        {lane.waitingCount < 3 ? '< 15m' : `${Math.ceil(lane.waitingCount * 5 / 15) * 15}m`}
+                      </div>
+                      <div className="text-xs text-gray-500">Wait</div>
                     </div>
                   </div>
                 </div>
 
-                {/* Estimated Wait */}
-                <div className="text-center">
-                  <div className="text-sm text-gray-600 mb-2">Estimated Wait Time</div>
-                  <div className="text-lg font-medium text-indigo-600">
-                    {formatEstimatedWait(lane.waitingCount * 5)}
-                  </div>
-                </div>
-
-                {/* Get Number Button */}
+                {/* Compact Get Number Button */}
                 <Button
                   onClick={() => getQueueNumber(lane.id)}
                   disabled={isGettingNumber}
-                  className="w-full h-12 text-lg font-medium"
+                  className="w-full h-10 text-sm font-medium"
                 >
                   {isGettingNumber ? (
                     <div className="flex items-center">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      Getting Number...
+                      <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-2"></div>
+                      Getting...
                     </div>
                   ) : (
-                    <>
-                      🎫 Get Queue Number
-                    </>
+                    <>🎫 Get Number</>
                   )}
                 </Button>
               </CardContent>
@@ -206,34 +206,31 @@ export default function ReservationPage() {
         </div>
 
         {lanes.length === 0 && (
-          <div className="text-center py-12">
-            <div className="text-6xl mb-4">🏢</div>
-            <h3 className="text-xl font-medium text-gray-900 mb-2">No Services Available</h3>
-            <p className="text-gray-600">All service lanes are currently closed. Please check back later.</p>
+          <div className="text-center py-8">
+            <div className="text-4xl mb-3">🏢</div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No Services Available</h3>
+            <p className="text-gray-600 text-sm">All service lanes are currently closed. Please check back later.</p>
           </div>
         )}
 
-        {/* Instructions */}
-        <Card className="mt-8 bg-blue-50 border-blue-200">
-          <CardHeader>
-            <CardTitle className="text-blue-800">How It Works</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid md:grid-cols-3 gap-6 text-sm text-blue-700">
+        {/* Compact Instructions */}
+        <Card className="mt-4 bg-blue-50 border-blue-200">
+          <CardContent className="p-4">
+            <div className="grid grid-cols-3 gap-4 text-xs text-blue-700">
               <div className="text-center">
-                <div className="text-2xl mb-2">1️⃣</div>
+                <div className="text-lg mb-1">1️⃣</div>
                 <h4 className="font-medium mb-1">Choose Service</h4>
-                <p>Select the service you need from the available options</p>
+                <p>Select your needed service</p>
               </div>
               <div className="text-center">
-                <div className="text-2xl mb-2">2️⃣</div>
-                <h4 className="font-medium mb-1">Get Your Number</h4>
-                <p>Click to receive your queue number and estimated wait time</p>
+                <div className="text-lg mb-1">2️⃣</div>
+                <h4 className="font-medium mb-1">Get Number</h4>
+                <p>Receive your queue number</p>
               </div>
               <div className="text-center">
-                <div className="text-2xl mb-2">3️⃣</div>
-                <h4 className="font-medium mb-1">Wait for Your Turn</h4>
-                <p>Listen for your number to be called or watch the display</p>
+                <div className="text-lg mb-1">3️⃣</div>
+                <h4 className="font-medium mb-1">Wait for Call</h4>
+                <p>Listen for your number</p>
               </div>
             </div>
           </CardContent>

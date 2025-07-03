@@ -6,11 +6,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
+import { LaneType } from '@prisma/client'
 
 interface Lane {
-  id: string
+  id: number
   name: string
   description?: string
+  type: LaneType
   currentNumber: number
   lastServedNumber: number
   queueItems: Array<{
@@ -21,9 +23,8 @@ interface Lane {
 
 export default function UserPage() {
   const [lanes, setLanes] = useState<Lane[]>([])
-  const [selectedLane, setSelectedLane] = useState<Lane | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [isOperating, setIsOperating] = useState(false)
+  const [isOperating, setIsOperating] = useState<{[key: number]: boolean}>({})
   const router = useRouter()
 
   const fetchLanes = useCallback(async () => {
@@ -33,22 +34,6 @@ export default function UserPage() {
       if (response.ok) {
         const data = await response.json()
         setLanes(data)
-        
-        // Auto-select the first assigned lane if none is selected
-        if (!selectedLane && data.length > 0) {
-          console.log('Auto-selecting first assigned lane:', data[0])
-          setSelectedLane(data[0])
-        }
-        
-        // Update selected lane with fresh data
-        if (selectedLane) {
-          const updatedSelectedLane = data.find((lane: Lane) => lane.id === selectedLane.id)
-          if (updatedSelectedLane) {
-            console.log('Updated selected lane:', updatedSelectedLane)
-            setSelectedLane(updatedSelectedLane)
-          }
-        }
-        
         setIsLoading(false)
       } else {
         toast.error('Failed to fetch assigned lanes')
@@ -59,18 +44,16 @@ export default function UserPage() {
       toast.error('Error fetching assigned lanes')
       setIsLoading(false)
     }
-  }, [selectedLane])
+  }, [])
 
   useEffect(() => {
     fetchLanes()
-    const interval = setInterval(fetchLanes, 2000) // Refresh every 2 seconds for more responsive updates
+    const interval = setInterval(fetchLanes, 2000) // Refresh every 2 seconds for real-time updates
     return () => clearInterval(interval)
-  }, [fetchLanes]) // Now fetchLanes is memoized
+  }, [fetchLanes])
 
-  const handleOperation = async (action: string) => {
-    if (!selectedLane) return
-    
-    setIsOperating(true)
+  const handleOperation = async (action: string, laneId: number) => {
+    setIsOperating(prev => ({ ...prev, [laneId]: true }))
     try {
       const response = await fetch('/api/queue/operations', {
         method: 'POST',
@@ -79,38 +62,36 @@ export default function UserPage() {
         },
         body: JSON.stringify({
           action,
-          laneId: selectedLane.id,
+          laneId,
         }),
       })
 
       if (response.ok) {
         const data = await response.json()
+        const lane = lanes.find(l => l.id === laneId)
         
         // Immediate feedback for different actions
         switch (action) {
           case 'NEXT':
             if (data.currentNumber) {
-              toast.success(`Now serving: ${data.currentNumber}`, {
+              toast.success(`${lane?.name}: Now serving #${data.currentNumber}`, {
                 duration: 4000,
               })
             }
             break
           case 'CALL':
-            toast.success(`Called number ${selectedLane.currentNumber} again`)
+            toast.success(`${lane?.name}: Called #${lane?.currentNumber} again`)
             break
           case 'BUZZ':
-            toast.success(`Buzzed number ${selectedLane.currentNumber}`)
+            toast.success(`${lane?.name}: Buzzed #${lane?.currentNumber}`)
             break
           case 'SERVE':
-            toast.success(`Customer ${data.servedNumber} has been served`)
+            toast.success(`${lane?.name}: Customer #${data.servedNumber} served`)
             break
         }
         
         // Force immediate refresh
         await fetchLanes()
-        
-        // Additional debug logging
-        console.log(`Operation ${action} completed for lane ${selectedLane.id}`)
       } else {
         const data = await response.json()
         toast.error(data.error || `Failed to perform ${action} operation`)
@@ -119,7 +100,7 @@ export default function UserPage() {
       console.error(`Error performing ${action}:`, error)
       toast.error('Network error. Please try again.')
     } finally {
-      setIsOperating(false)
+      setIsOperating(prev => ({ ...prev, [laneId]: false }))
     }
   }
 
@@ -153,217 +134,179 @@ export default function UserPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
+      {/* Compact Header */}
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <h1 className="text-2xl font-bold text-gray-900">Cashier Interface</h1>
-            <Button onClick={handleLogout} variant="outline">
+          <div className="flex justify-between items-center py-3">
+            <div className="flex items-center gap-3">
+              <h1 className="text-xl font-bold text-gray-900">Cashier Interface</h1>
+              {lanes.length > 0 && (
+                <Badge variant="outline" className="text-xs">
+                  {lanes.length} Lane{lanes.length > 1 ? 's' : ''}
+                </Badge>
+              )}
+            </div>
+            <Button onClick={handleLogout} variant="outline" size="sm">
               Logout
             </Button>
           </div>
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {(!selectedLane && lanes.length > 1) ? (
-          /* Lane Selection - only show if user has multiple assigned lanes */
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">Select Your Lane</h2>
-              <p className="text-gray-600 mb-6">You are assigned to multiple lanes. Choose the one you want to manage.</p>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        {lanes.length === 0 ? (
+          /* No assigned lanes */
+          <div className="text-center py-8">
+            <div className="mx-auto max-w-md">
+              <div className="text-4xl mb-3">🚫</div>
+              <h2 className="text-xl font-bold text-gray-900 mb-3">No Assigned Lanes</h2>
+              <p className="text-gray-600 mb-4 text-sm">
+                You are not currently assigned to any service lanes. Please contact your administrator.
+              </p>
+              <Button onClick={handleLogout} variant="outline" size="sm">
+                Logout
+              </Button>
             </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          </div>
+        ) : (
+          /* All Lanes Management - Compact Grid Layout */
+          <div className="space-y-4">
+            {/* Compact Grid Layout for Multiple Lanes */}
+            <div className={`grid gap-4 ${lanes.length === 1 ? 'grid-cols-1' : lanes.length === 2 ? 'grid-cols-1 xl:grid-cols-2' : 'grid-cols-1 lg:grid-cols-2 xl:grid-cols-3'}`}>
               {lanes.map((lane) => (
-                <Card 
-                  key={lane.id} 
-                  className="cursor-pointer hover:shadow-lg transition-shadow"
-                  onClick={() => setSelectedLane(lane)}
-                >
-                  <CardHeader>
-                    <CardTitle className="flex items-center justify-between">
-                      {lane.name}
-                      <Badge className="bg-green-100 text-green-800">Active</Badge>
-                    </CardTitle>
-                    <CardDescription>{lane.description}</CardDescription>
+                <Card key={lane.id} className="shadow-md border-2">
+                  {/* Compact Header */}
+                  <CardHeader className="pb-3 pt-4 px-4 bg-gradient-to-r from-gray-50 to-gray-100">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <CardTitle className="text-lg">{lane.name}</CardTitle>
+                        <Badge 
+                          variant={lane.type === 'PWD_SENIOR' ? 'secondary' : 'outline'}
+                          className="text-xs"
+                        >
+                          {lane.type === 'PWD_SENIOR' ? 'PWD/Senior' : 'Regular'}
+                        </Badge>
+                      </div>
+                      <Badge variant="default" className="bg-green-100 text-green-800 text-xs">
+                        Active
+                      </Badge>
+                    </div>
+                    {lane.description && (
+                      <CardDescription className="text-sm text-gray-600">
+                        {lane.description}
+                      </CardDescription>
+                    )}
                   </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2">
-                      <div className="flex justify-between">
-                        <span className="text-sm text-gray-500">Current Number:</span>
-                        <span className="font-medium text-2xl text-blue-600">{lane.currentNumber}</span>
+
+                  <CardContent className="p-4">
+                    {/* Compact Statistics Grid */}
+                    <div className="grid grid-cols-4 gap-2 mb-4">
+                      <div className="text-center p-2 bg-blue-50 rounded">
+                        <div className="text-xl font-bold text-blue-600">{lane.currentNumber}</div>
+                        <div className="text-xs text-blue-700">Current</div>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-sm text-gray-500">Waiting:</span>
-                        <span className="font-medium">{getWaitingCount(lane)}</span>
+                      <div className="text-center p-2 bg-green-50 rounded">
+                        <div className="text-xl font-bold text-green-600">{lane.lastServedNumber}</div>
+                        <div className="text-xs text-green-700">Served</div>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-sm text-gray-500">Called:</span>
-                        <span className="font-medium">{getCalledCount(lane)}</span>
+                      <div className="text-center p-2 bg-orange-50 rounded">
+                        <div className="text-xl font-bold text-orange-600">{getWaitingCount(lane)}</div>
+                        <div className="text-xs text-orange-700">Waiting</div>
+                      </div>
+                      <div className="text-center p-2 bg-purple-50 rounded">
+                        <div className="text-xl font-bold text-purple-600">{getCalledCount(lane)}</div>
+                        <div className="text-xs text-purple-700">Called</div>
                       </div>
                     </div>
+
+                    {/* Compact Control Buttons - 2x2 Grid */}
+                    <div className="grid grid-cols-2 gap-2 mb-3">
+                      <Button
+                        onClick={() => handleOperation('NEXT', lane.id)}
+                        disabled={isOperating[lane.id] || getWaitingCount(lane) === 0}
+                        className="h-14 text-sm bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400"
+                        size="sm"
+                      >
+                        <div className="text-center">
+                          <div className="text-lg">⏭️</div>
+                          <div className="text-xs">Next</div>
+                        </div>
+                      </Button>
+                      
+                      <Button
+                        onClick={() => handleOperation('CALL', lane.id)}
+                        disabled={isOperating[lane.id] || lane.currentNumber === 0}
+                        className="h-14 text-sm bg-green-600 hover:bg-green-700"
+                        size="sm"
+                      >
+                        <div className="text-center">
+                          <div className="text-lg">📢</div>
+                          <div className="text-xs">Call</div>
+                        </div>
+                      </Button>
+                      
+                      <Button
+                        onClick={() => handleOperation('BUZZ', lane.id)}
+                        disabled={isOperating[lane.id] || lane.currentNumber === 0}
+                        className="h-14 text-sm bg-orange-600 hover:bg-orange-700"
+                        size="sm"
+                      >
+                        <div className="text-center">
+                          <div className="text-lg">🔔</div>
+                          <div className="text-xs">Buzz</div>
+                        </div>
+                      </Button>
+                      
+                      <Button
+                        onClick={() => handleOperation('SERVE', lane.id)}
+                        disabled={isOperating[lane.id] || lane.currentNumber === 0}
+                        className="h-14 text-sm bg-purple-600 hover:bg-purple-700"
+                        size="sm"
+                      >
+                        <div className="text-center">
+                          <div className="text-lg">✅</div>
+                          <div className="text-xs">Serve</div>
+                        </div>
+                      </Button>
+                    </div>
+
+                    {/* Priority Lane Warning - Compact */}
+                    {lane.type === 'PWD_SENIOR' && (
+                      <div className="bg-yellow-50 border border-yellow-200 rounded p-2">
+                        <div className="flex items-center gap-1">
+                          <span className="text-yellow-600 text-sm">⚠️</span>
+                          <span className="text-xs text-yellow-800 font-medium">
+                            Priority Lane
+                          </span>
+                        </div>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               ))}
             </div>
-          </div>
-        ) : lanes.length === 0 ? (
-          /* No assigned lanes */
-          <div className="text-center py-12">
-            <div className="mx-auto max-w-md">
-              <div className="text-6xl mb-4">🚫</div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">No Assigned Lanes</h2>
-              <p className="text-gray-600 mb-6">
-                You are not currently assigned to any service lanes. Please contact your administrator to get assigned to a lane.
-              </p>
-              <Button onClick={handleLogout} variant="outline">
-                Logout
-              </Button>
-            </div>
-          </div>
-        ) : selectedLane ? (
-          /* Queue Management */
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-2xl font-bold text-gray-900">{selectedLane.name}</h2>
-                <p className="text-gray-600">{selectedLane.description}</p>
-              </div>
-              <Button onClick={handleLogout} variant="outline">
-                Logout
-              </Button>
-            </div>
 
-            {/* Current Status */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              <Card>
-                <CardContent className="p-6 text-center">
-                  <div className="text-4xl font-bold text-blue-600 mb-2">
-                    {selectedLane.currentNumber}
-                  </div>
-                  <div className="text-sm text-gray-500">Current Number</div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-6 text-center">
-                  <div className="text-4xl font-bold text-green-600 mb-2">
-                    {selectedLane.lastServedNumber}
-                  </div>
-                  <div className="text-sm text-gray-500">Last Served</div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-6 text-center">
-                  <div className="text-4xl font-bold text-orange-600 mb-2">
-                    {getWaitingCount(selectedLane)}
-                  </div>
-                  <div className="text-sm text-gray-500">Waiting</div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-6 text-center">
-                  <div className="text-4xl font-bold text-purple-600 mb-2">
-                    {getCalledCount(selectedLane)}
-                  </div>
-                  <div className="text-sm text-gray-500">Called</div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Queue Controls */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Queue Controls</CardTitle>
-                <CardDescription>
-                  Manage your queue with the following operations
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <Button
-                    onClick={() => handleOperation('NEXT')}
-                    disabled={isOperating || getWaitingCount(selectedLane) === 0}
-                    className="h-20 text-lg bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400"
-                  >
-                    <div className="text-center">
-                      <div className="text-2xl mb-1">⏭️</div>
-                      <div>Next Number</div>
-                      {getWaitingCount(selectedLane) === 0 && (
-                        <div className="text-xs text-gray-200">No waiting</div>
-                      )}
-                    </div>
-                  </Button>
-                  
-                  <Button
-                    onClick={() => handleOperation('CALL')}
-                    disabled={isOperating || selectedLane.currentNumber === 0}
-                    className="h-20 text-lg bg-green-600 hover:bg-green-700"
-                    variant="default"
-                  >
-                    <div className="text-center">
-                      <div className="text-2xl mb-1">📢</div>
-                      <div>Call Again</div>
-                    </div>
-                  </Button>
-                  
-                  <Button
-                    onClick={() => handleOperation('BUZZ')}
-                    disabled={isOperating || selectedLane.currentNumber === 0}
-                    className="h-20 text-lg bg-orange-600 hover:bg-orange-700"
-                    variant="default"
-                  >
-                    <div className="text-center">
-                      <div className="text-2xl mb-1">🔔</div>
-                      <div>Buzz Number</div>
-                    </div>
-                  </Button>
-                  
-                  <Button
-                    onClick={() => handleOperation('SERVE')}
-                    disabled={isOperating || selectedLane.currentNumber === 0}
-                    className="h-20 text-lg bg-purple-600 hover:bg-purple-700"
-                    variant="default"
-                  >
-                    <div className="text-center">
-                      <div className="text-2xl mb-1">✅</div>
-                      <div>Serve Customer</div>
-                    </div>
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Instructions */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Instructions</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid md:grid-cols-2 gap-6">
+            {/* Compact Instructions - Collapsible or Minimal */}
+            <Card className="bg-gray-50">
+              <CardContent className="p-4">
+                <div className="grid md:grid-cols-4 gap-4 text-xs">
                   <div>
-                    <h4 className="font-medium mb-2">Queue Operations:</h4>
-                    <ul className="text-sm text-gray-600 space-y-1">
-                      <li><strong>Next Number:</strong> Advance to the next customer in queue</li>
-                      <li><strong>Call Again:</strong> Re-announce the current number</li>
-                      <li><strong>Buzz Number:</strong> Send an alert/notification for current number</li>
-                      <li><strong>Serve Customer:</strong> Mark current customer as served and update last served number</li>
-                    </ul>
+                    <strong className="text-blue-600">⏭️ Next:</strong> Advance queue
                   </div>
                   <div>
-                    <h4 className="font-medium mb-2">Tips:</h4>
-                    <ul className="text-sm text-gray-600 space-y-1">
-                      <li>• Use &ldquo;Serve Customer&rdquo; when you finish helping the current customer</li>
-                      <li>• Use &ldquo;Call Again&rdquo; if customer doesn&apos;t respond initially</li>
-                      <li>• Use &ldquo;Buzz&rdquo; for urgent notifications or if customer still doesn&apos;t respond</li>
-                      <li>• Monitor the waiting count to manage queue flow</li>
-                    </ul>
+                    <strong className="text-green-600">📢 Call:</strong> Re-announce number
+                  </div>
+                  <div>
+                    <strong className="text-orange-600">🔔 Buzz:</strong> Send alert/notification
+                  </div>
+                  <div>
+                    <strong className="text-purple-600">✅ Serve:</strong> Mark as served
                   </div>
                 </div>
               </CardContent>
             </Card>
           </div>
-        ) : null}
+        )}
       </div>
     </div>
   )

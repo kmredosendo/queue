@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { UserRole } from '@prisma/client'
+import { UserRole, LaneType } from '@prisma/client'
 
 interface User {
   id: number
@@ -30,6 +30,7 @@ interface Lane {
   id: number
   name: string
   description?: string
+  type: LaneType
   isActive: boolean
   currentNumber: number
   lastServedNumber: number
@@ -49,6 +50,8 @@ export default function AdminDashboard() {
   const [lanes, setLanes] = useState<Lane[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [authLoading, setAuthLoading] = useState(true)
 
   // User form state
   const [showUserDialog, setShowUserDialog] = useState(false)
@@ -65,7 +68,8 @@ export default function AdminDashboard() {
   const [editingLane, setEditingLane] = useState<Lane | null>(null)
   const [laneForm, setLaneForm] = useState({
     name: '',
-    description: ''
+    description: '',
+    type: LaneType.REGULAR as LaneType
   })
 
   // Staff assignment state
@@ -73,10 +77,38 @@ export default function AdminDashboard() {
   const [selectedLane, setSelectedLane] = useState<Lane | null>(null)
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null)
 
+  const checkAuth = useCallback(async () => {
+    try {
+      const response = await fetch('/api/users')
+      if (response.ok) {
+        setIsAuthenticated(true)
+        loadData()
+      } else {
+        // Redirect to main login page
+        window.location.href = '/'
+      }
+    } catch {
+      // Redirect to main login page
+      window.location.href = '/'
+    } finally {
+      setAuthLoading(false)
+    }
+  }, [])
+
   // Load data
   useEffect(() => {
-    loadData()
-  }, [])
+    checkAuth()
+  }, [checkAuth])
+
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' })
+      window.location.href = '/'
+    } catch (err) {
+      console.error('Logout error:', err)
+      window.location.href = '/'
+    }
+  }
 
   const loadData = async () => {
     try {
@@ -265,7 +297,8 @@ export default function AdminDashboard() {
   const resetLaneForm = () => {
     setLaneForm({
       name: '',
-      description: ''
+      description: '',
+      type: LaneType.REGULAR as LaneType
     })
   }
 
@@ -274,7 +307,8 @@ export default function AdminDashboard() {
       setEditingLane(lane)
       setLaneForm({
         name: lane.name,
-        description: lane.description || ''
+        description: lane.description || '',
+        type: lane.type
       })
     } else {
       setEditingLane(null)
@@ -345,6 +379,24 @@ export default function AdminDashboard() {
     )
   }
 
+  // Show loading while checking authentication
+  if (authLoading) {
+    return (
+      <div className="container mx-auto p-6">
+        <div className="text-center">Checking authentication...</div>
+      </div>
+    )
+  }
+
+  // If not authenticated, user will be redirected to login page
+  if (!isAuthenticated) {
+    return (
+      <div className="container mx-auto p-6">
+        <div className="text-center">Redirecting to login...</div>
+      </div>
+    )
+  }
+
   if (loading) {
     return (
       <div className="container mx-auto p-6">
@@ -357,7 +409,10 @@ export default function AdminDashboard() {
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-        <Button onClick={() => window.location.reload()}>Refresh</Button>
+        <div className="flex gap-2">
+          <Button onClick={() => window.location.reload()}>Refresh</Button>
+          <Button variant="outline" onClick={handleLogout}>Logout</Button>
+        </div>
       </div>
 
       {error && (
@@ -456,6 +511,7 @@ export default function AdminDashboard() {
             <TableHeader>
               <TableRow>
                 <TableHead>Name</TableHead>
+                <TableHead>Type</TableHead>
                 <TableHead>Description</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Current Number</TableHead>
@@ -467,6 +523,11 @@ export default function AdminDashboard() {
               {lanes.map((lane) => (
                 <TableRow key={lane.id}>
                   <TableCell className="font-medium">{lane.name}</TableCell>
+                  <TableCell>
+                    <Badge variant={lane.type === LaneType.PWD_SENIOR ? 'secondary' : 'outline'}>
+                      {lane.type === LaneType.PWD_SENIOR ? 'PWD/Senior' : 'Regular'}
+                    </Badge>
+                  </TableCell>
                   <TableCell>{lane.description || 'No description'}</TableCell>
                   <TableCell>
                     <Badge variant={lane.isActive ? 'default' : 'destructive'}>
@@ -602,6 +663,18 @@ export default function AdminDashboard() {
                 value={laneForm.name}
                 onChange={(e) => setLaneForm({...laneForm, name: e.target.value})}
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="lane-type">Type</Label>
+              <Select value={laneForm.type} onValueChange={(value) => setLaneForm({...laneForm, type: value as LaneType})}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={LaneType.REGULAR}>Regular</SelectItem>
+                  <SelectItem value={LaneType.PWD_SENIOR}>PWD/Senior Citizens</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="lane-description">Description</Label>

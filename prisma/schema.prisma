@@ -15,6 +15,11 @@ enum UserRole {
   USER
 }
 
+enum LaneType {
+  REGULAR
+  PWD_SENIOR // For PWDs and Senior Citizens
+}
+
 enum QueueStatus {
   ACTIVE
   INACTIVE
@@ -50,6 +55,7 @@ model Lane {
   id          Int         @id @default(autoincrement())
   name        String
   description String?
+  type        LaneType    @default(REGULAR)
   isActive    Boolean     @default(true)
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
@@ -76,6 +82,7 @@ model LaneUser {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   lane Lane @relation(fields: [laneId], references: [id], onDelete: Cascade)
 
+  // Ensure no duplicate assignments
   @@unique([userId, laneId])
   @@map("lane_users")
 }

@@ -28,6 +28,7 @@ stop-production.bat
 install-service.bat
 PRODUCTION-DEPLOYMENT.md
 ecosystem.config.js
+clear-auth-tokens.js
 
 # misc
 .DS_Store

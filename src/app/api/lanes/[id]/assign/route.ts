@@ -55,9 +55,10 @@ export async function POST(
       )
     }
 
-    // Check if lane exists
+    // Check if lane exists and get its type
     const lane = await prisma.lane.findUnique({
-      where: { id: laneId }
+      where: { id: laneId },
+      select: { id: true, name: true, type: true, isActive: true }
     })
 
     if (!lane) {
@@ -67,7 +68,51 @@ export async function POST(
       )
     }
 
-    // Check if assignment already exists
+    if (!lane.isActive) {
+      return NextResponse.json(
+        { error: 'Cannot assign user to inactive lane' },
+        { status: 400 }
+      )
+    }
+
+    // Check current assignments for this user
+    const currentAssignments = await prisma.laneUser.findMany({
+      where: { userId },
+      include: {
+        lane: {
+          select: { id: true, name: true, type: true }
+        }
+      }
+    })
+
+    // Business rule: User can have at most 2 assignments
+    // One REGULAR lane and one PWD_SENIOR lane
+    if (currentAssignments.length >= 2) {
+      return NextResponse.json(
+        { error: 'User can only be assigned to a maximum of 2 lanes (1 regular + 1 PWD/Senior)' },
+        { status: 400 }
+      )
+    }
+
+    // Check if user already has an assignment of this lane type
+    const hasRegularLane = currentAssignments.some(a => a.lane.type === 'REGULAR')
+    const hasPwdSeniorLane = currentAssignments.some(a => a.lane.type === 'PWD_SENIOR')
+
+    if (lane.type === 'REGULAR' && hasRegularLane) {
+      return NextResponse.json(
+        { error: 'User is already assigned to a regular lane' },
+        { status: 400 }
+      )
+    }
+
+    if (lane.type === 'PWD_SENIOR' && hasPwdSeniorLane) {
+      return NextResponse.json(
+        { error: 'User is already assigned to a PWD/Senior Citizens lane' },
+        { status: 400 }
+      )
+    }
+
+    // Check if assignment already exists (duplicate check)
     const existingAssignment = await prisma.laneUser.findUnique({
       where: {
         userId_laneId: {

@@ -1,4 +1,4 @@
-import { PrismaClient, UserRole } from '@prisma/client'
+import { PrismaClient, UserRole, LaneType } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 
 const prisma = new PrismaClient()
@@ -53,6 +53,7 @@ async function main() {
     data: {
       name: 'Customer Service',
       description: 'General customer inquiries and support',
+      type: LaneType.REGULAR,
       isActive: true,
     },
   })
@@ -62,15 +63,27 @@ async function main() {
     data: {
       name: 'Billing & Payments',
       description: 'Payment processing and billing inquiries',
+      type: LaneType.REGULAR,
       isActive: true,
     },
   })
   console.log('✅ Created lane:', billing.name)
 
+  const pwdSenior = await prisma.lane.create({
+    data: {
+      name: 'PWD/Senior Citizens',
+      description: 'Priority lane for PWDs and Senior Citizens',
+      type: LaneType.PWD_SENIOR,
+      isActive: true,
+    },
+  })
+  console.log('✅ Created lane:', pwdSenior.name)
+
   const technical = await prisma.lane.create({
     data: {
       name: 'Technical Support',
       description: 'Technical assistance and troubleshooting',
+      type: LaneType.REGULAR,
       isActive: true,
     },
   })
@@ -92,6 +105,15 @@ async function main() {
     },
   })
   console.log('✅ Assigned', cashier2.name, 'to', billing.name)
+
+  // Assign cashier1 to PWD/Senior lane as well (demonstrating multi-lane assignment)
+  await prisma.laneUser.create({
+    data: {
+      userId: cashier.id,
+      laneId: pwdSenior.id,
+    },
+  })
+  console.log('✅ Assigned', cashier.name, 'to', pwdSenior.name)
 
   console.log('🎉 Seed completed successfully!')
 }

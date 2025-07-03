@@ -213,8 +213,8 @@ export default function DisplayPage() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-900 to-indigo-900 flex items-center justify-center">
         <div className="text-center text-white">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-white"></div>
-          <p className="mt-4 text-xl">Loading Display...</p>
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-white"></div>
+          <p className="mt-3 text-lg">Loading Display...</p>
         </div>
       </div>
     )
@@ -222,19 +222,19 @@ export default function DisplayPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-900 to-indigo-900 text-white">
-      {/* Header */}
+      {/* Compact Header */}
       <header className="bg-black bg-opacity-20 backdrop-blur-sm">
-        <div className="max-w-7xl mx-auto px-8 py-6">
+        <div className="max-w-7xl mx-auto px-4 py-3">
           <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-4xl font-bold">Queue Status Display</h1>
-              <p className="text-blue-200 text-lg mt-1">Real-time queue monitoring</p>
+              <h1 className="text-2xl font-bold">Queue Status Display</h1>
+              <p className="text-blue-200 text-sm">Real-time monitoring</p>
             </div>
             <div className="text-right">
-              <div className="text-3xl font-mono font-bold">
+              <div className="text-xl font-mono font-bold">
                 {formatTime(currentTime)}
               </div>
-              <div className="text-blue-200 text-lg">
+              <div className="text-blue-200 text-sm">
                 {formatDate(currentTime)}
               </div>
             </div>
@@ -242,91 +242,100 @@ export default function DisplayPage() {
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto px-8 py-8">
+      <div className="max-w-7xl mx-auto px-4 py-4">
         {lanes.length === 0 ? (
-          <div className="text-center py-20">
-            <div className="text-8xl mb-8">🏢</div>
-            <h2 className="text-4xl font-bold mb-4">No Active Services</h2>
-            <p className="text-2xl text-blue-200">All service lanes are currently closed</p>
+          <div className="text-center py-12">
+            <div className="text-6xl mb-4">🏢</div>
+            <h2 className="text-2xl font-bold mb-3">No Active Services</h2>
+            <p className="text-lg text-blue-200">All service lanes are currently closed</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          /* Responsive Grid - More Lanes Fit On Screen */
+          <div className={`grid gap-4 ${
+            lanes.length === 1 ? 'grid-cols-1 max-w-2xl mx-auto' :
+            lanes.length === 2 ? 'grid-cols-1 lg:grid-cols-2' :
+            lanes.length === 3 ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' :
+            lanes.length === 4 ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4' :
+            'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
+          }`}>
             {lanes.map((lane) => (
               <Card key={lane.id} className="bg-white bg-opacity-10 backdrop-blur-md border-white border-opacity-20 hover:bg-opacity-20 transition-all duration-300">
-                <CardContent className="p-8">
-                  {/* Lane Header */}
-                  <div className="flex justify-between items-start mb-6">
+                <CardContent className="p-4">
+                  {/* Compact Lane Header */}
+                  <div className="flex justify-between items-start mb-3">
                     <div>
-                      <h3 className="text-3xl font-bold text-white mb-2">
+                      <h3 className="text-lg font-bold text-white mb-1">
                         {lane.name}
                       </h3>
-                      <p className="text-blue-200 text-lg">
-                        {lane.description || 'Service Available'}
-                      </p>
+                      {lane.description && (
+                        <p className="text-blue-200 text-xs">
+                          {lane.description}
+                        </p>
+                      )}
                     </div>
-                    <Badge className="bg-green-500 text-white text-lg px-4 py-2">
+                    <Badge className="bg-green-500 text-white text-xs px-2 py-1">
                       OPEN
                     </Badge>
                   </div>
 
-                  {/* Current Number Display */}
-                  <div className={`bg-black bg-opacity-30 rounded-2xl p-8 mb-6 text-center transition-all duration-1000 ${
-                    recentlyUpdatedLanes.has(lane.id) ? 'ring-4 ring-yellow-400 ring-opacity-75 bg-yellow-400 bg-opacity-20' : ''
+                  {/* Compact Current Number Display */}
+                  <div className={`bg-black bg-opacity-30 rounded-lg p-4 mb-4 text-center transition-all duration-1000 ${
+                    recentlyUpdatedLanes.has(lane.id) ? 'ring-2 ring-yellow-400 ring-opacity-75 bg-yellow-400 bg-opacity-20' : ''
                   }`}>
-                    <div className="text-blue-200 text-xl mb-2">NOW SERVING</div>
-                    <div className={`text-8xl font-bold mb-2 font-mono transition-all duration-500 ${
+                    <div className="text-blue-200 text-xs mb-1">NOW SERVING</div>
+                    <div className={`text-4xl font-bold mb-1 font-mono transition-all duration-500 ${
                       recentlyUpdatedLanes.has(lane.id) ? 'text-yellow-300 animate-pulse' : 'text-yellow-400'
                     }`}>
                       {lane.currentNumber === 0 ? '---' : lane.currentNumber.toString().padStart(3, '0')}
                     </div>
                     {lane.currentNumber > 0 && (
                       <div className={`${recentlyUpdatedLanes.has(lane.id) ? 'animate-bounce' : 'animate-pulse'}`}>
-                        <div className="text-2xl text-green-400">
+                        <div className="text-xs text-green-400">
                           🔔 Please proceed to {lane.name}
                         </div>
                       </div>
                     )}
                   </div>
 
-                  {/* Queue Statistics */}
-                  <div className="grid grid-cols-3 gap-4">
-                    <div className="bg-black bg-opacity-20 rounded-lg p-4 text-center">
-                      <div className="text-3xl font-bold text-green-400">
+                  {/* Compact Queue Statistics */}
+                  <div className="grid grid-cols-3 gap-2 mb-3">
+                    <div className="bg-black bg-opacity-20 rounded p-2 text-center">
+                      <div className="text-lg font-bold text-green-400">
                         {lane.lastServedNumber}
                       </div>
-                      <div className="text-blue-200 text-sm mt-1">
-                        Last Served
+                      <div className="text-blue-200 text-xs">
+                        Last
                       </div>
                     </div>
                     
-                    <div className="bg-black bg-opacity-20 rounded-lg p-4 text-center">
-                      <div className="text-3xl font-bold text-orange-400">
+                    <div className="bg-black bg-opacity-20 rounded p-2 text-center">
+                      <div className="text-lg font-bold text-orange-400">
                         {lane.waitingCount}
                       </div>
-                      <div className="text-blue-200 text-sm mt-1">
+                      <div className="text-blue-200 text-xs">
                         Waiting
                       </div>
                     </div>
                     
-                    <div className="bg-black bg-opacity-20 rounded-lg p-4 text-center">
-                      <div className="text-3xl font-bold text-purple-400">
+                    <div className="bg-black bg-opacity-20 rounded p-2 text-center">
+                      <div className="text-lg font-bold text-purple-400">
                         {lane.nextNumber}
                       </div>
-                      <div className="text-blue-200 text-sm mt-1">
-                        Next Number
+                      <div className="text-blue-200 text-xs">
+                        Next
                       </div>
                     </div>
                   </div>
 
-                  {/* Queue Progress Bar */}
-                  <div className="mt-6">
-                    <div className="flex justify-between text-sm text-blue-200 mb-2">
-                      <span>Queue Progress</span>
+                  {/* Compact Progress Bar */}
+                  <div>
+                    <div className="flex justify-between text-xs text-blue-200 mb-1">
+                      <span>Progress</span>
                       <span>{lane.waitingCount} waiting</span>
                     </div>
-                    <div className="w-full bg-black bg-opacity-30 rounded-full h-3">
+                    <div className="w-full bg-black bg-opacity-30 rounded-full h-2">
                       <div 
-                        className="bg-gradient-to-r from-green-400 to-blue-500 h-3 rounded-full transition-all duration-500"
+                        className="bg-gradient-to-r from-green-400 to-blue-500 h-2 rounded-full transition-all duration-500"
                         style={{ 
                           width: lane.nextNumber > 0 
                             ? `${Math.min((lane.currentNumber / lane.nextNumber) * 100, 100)}%` 
@@ -341,33 +350,32 @@ export default function DisplayPage() {
           </div>
         )}
 
-        {/* Footer */}
-        <div className="mt-12 text-center">
-          <div className="bg-black bg-opacity-20 backdrop-blur-sm rounded-lg p-6 max-w-2xl mx-auto">
-            <h3 className="text-2xl font-bold mb-3">🔔 Important Notice</h3>
-            <div className="text-lg text-blue-200 space-y-2">
-              <p>• Please listen for your number or watch this screen</p>
-              <p>• If you miss your call, please approach the service counter</p>
-              <p>• Thank you for your patience</p>
+        {/* Compact Footer Notice */}
+        <div className="mt-4 text-center">
+          <div className="bg-black bg-opacity-20 backdrop-blur-sm rounded-lg p-3 max-w-4xl mx-auto">
+            <div className="flex flex-wrap justify-center gap-6 text-sm text-blue-200">
+              <span>🔔 Listen for your number</span>
+              <span>👀 Watch this screen</span>
+              <span>❓ Missed call? Approach counter</span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Auto-scroll indicator */}
-      <div className="fixed bottom-4 right-4 bg-black bg-opacity-50 text-white px-4 py-2 rounded-lg">
+      {/* Compact Live Updates Indicator */}
+      <div className="fixed bottom-3 right-3 bg-black bg-opacity-50 text-white px-3 py-2 rounded-lg">
         <div className="flex items-center">
-          <div className="animate-pulse w-3 h-3 bg-green-400 rounded-full mr-2"></div>
-          <span className="text-sm">Live Updates</span>
+          <div className="animate-pulse w-2 h-2 bg-green-400 rounded-full mr-2"></div>
+          <span className="text-xs">Live</span>
         </div>
       </div>
 
-      {/* Sound indicator */}
+      {/* Compact Sound Notification */}
       {recentlyUpdatedLanes.size > 0 && (
-        <div className="fixed bottom-4 left-4 bg-yellow-500 bg-opacity-90 text-black px-6 py-3 rounded-lg animate-bounce">
+        <div className="fixed bottom-3 left-3 bg-yellow-500 bg-opacity-90 text-black px-4 py-2 rounded-lg animate-bounce">
           <div className="flex items-center">
-            <div className="text-2xl mr-2">🔔</div>
-            <span className="font-bold">New Number Called!</span>
+            <div className="text-lg mr-2">🔔</div>
+            <span className="font-bold text-sm">New Number!</span>
           </div>
         </div>
       )}
