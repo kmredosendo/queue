@@ -1,189 +1,341 @@
-const fs = require('fs')
-const path = require('path')
-const { execSync } = require('child_process')
+const fs = require('fs');
+const path = require('path');
+const { execSync } = require('child_process');
 
-console.log('🚀 Building production package...')
+/**
+ * Production Build Script for Queue Management System
+ * Creates a minimal, production-ready package with essential files only
+ */
 
-// Build the project first
-console.log('📦 Building Next.js application...')
-execSync('npm run build', { stdio: 'inherit' })
+console.log('🚀 Building production package...\n');
 
-// Create production directory
-const prodDir = path.join(__dirname, 'production')
-if (fs.existsSync(prodDir)) {
-  console.log('🧹 Cleaning existing production directory...')
-  fs.rmSync(prodDir, { recursive: true, force: true })
+// Define source and destination directories
+const sourceDir = __dirname;
+const productionDir = path.join(sourceDir, 'production');
+
+// Step 1: Build the Next.js application
+console.log('🔨 Building Next.js application...');
+try {
+  execSync('npm run build', { stdio: 'inherit', cwd: sourceDir });
+  console.log('   ✅ Next.js build completed\n');
+} catch (error) {
+  console.error('❌ Build failed:', error.message);
+  process.exit(1);
 }
-fs.mkdirSync(prodDir)
 
-// Create logs directory for PM2
-const logsDir = path.join(prodDir, 'logs')
-fs.mkdirSync(logsDir)
-
-// Files and folders to copy
-const itemsToCopy = [
+// Files and directories to copy to production
+const essentialItems = [
+  'src',
+  'prisma',
+  'public',
+  '.next',  // Include the built Next.js application
   'package.json',
   'package-lock.json',
   'next.config.ts',
+  'next-env.d.ts',
   'tsconfig.json',
-  'components.json',
   'postcss.config.mjs',
-  'eslint.config.mjs',
-  'ecosystem.config.js',
-  'install-and-start.bat',
-  'quick-start.bat',
-  'stop-production.bat',
-  'install-service.bat',
-  'PRODUCTION-DEPLOYMENT.md',
-  '.next',
-  'public',
-  'prisma',
-  'scripts',
-  'src'
-]
+  'components.json',
+  'eslint.config.mjs'
+];
 
-// Copy function
-function copyRecursive(src, dest) {
-  const stat = fs.statSync(src)
-  if (stat.isDirectory()) {
-    if (!fs.existsSync(dest)) {
-      fs.mkdirSync(dest, { recursive: true })
-    }
-    const files = fs.readdirSync(src)
-    files.forEach(file => {
-      copyRecursive(path.join(src, file), path.join(dest, file))
-    })
-  } else {
-    fs.copyFileSync(src, dest)
-  }
+// Create production directory
+if (fs.existsSync(productionDir)) {
+  console.log('📁 Removing existing production directory...');
+  fs.rmSync(productionDir, { recursive: true, force: true });
 }
 
-// Copy each item
-itemsToCopy.forEach(item => {
-  const srcPath = path.join(__dirname, item)
-  const destPath = path.join(prodDir, item)
+console.log('📁 Creating production directory...');
+fs.mkdirSync(productionDir, { recursive: true });
+
+// Copy essential files and directories
+console.log('📋 Copying essential files...');
+essentialItems.forEach(item => {
+  const sourcePath = path.join(sourceDir, item);
+  const destPath = path.join(productionDir, item);
   
-  if (fs.existsSync(srcPath)) {
-    console.log(`📁 Copying ${item}...`)
-    copyRecursive(srcPath, destPath)
+  if (fs.existsSync(sourcePath)) {
+    if (fs.statSync(sourcePath).isDirectory()) {
+      copyDirectory(sourcePath, destPath);
+      console.log(`   ✅ ${item}/ (directory)`);
+    } else {
+      fs.copyFileSync(sourcePath, destPath);
+      console.log(`   ✅ ${item} (file)`);
+    }
   } else {
-    console.log(`⚠️  Warning: ${item} not found, skipping...`)
+    console.log(`   ⚠️  ${item} (not found, skipping)`);
   }
-})
+});
 
-// Create production .env template
-const envTemplate = `# Production Environment Variables
-DATABASE_URL="mysql://username:password@localhost:3306/queue_production"
-JWT_SECRET="your-super-secure-jwt-secret-change-this-in-production"
+// Create .env.example template
+console.log('🔧 Creating environment template...');
+const envExample = `# Database Configuration
+DATABASE_URL="mysql://username:password@localhost:3306/queue_system"
+
+# JWT Secret for authentication (CHANGE IN PRODUCTION)
+JWT_SECRET="your-super-secret-jwt-key-change-in-production"
+
+# Next.js Configuration
+NEXTAUTH_URL="http://localhost:3000"
+NEXTAUTH_SECRET="your-nextauth-secret-change-in-production"
+
+# Application Settings
 NODE_ENV="production"
 PORT=3000
-`
+`;
 
-fs.writeFileSync(path.join(prodDir, '.env.example'), envTemplate)
+fs.writeFileSync(path.join(productionDir, '.env.example'), envExample);
+console.log('   ✅ .env.example created');
 
-// Create production README
-const productionReadme = `# Queue System - Production Deployment
+// Create PM2 ecosystem configuration
+console.log('🔧 Creating PM2 configuration...');
+const ecosystemConfig = `// PM2 Configuration for Windows 11 Production
+module.exports = {
+  apps: [{
+    name: 'queue-system',
+    script: './start-app.bat',
+    instances: 1,
+    exec_mode: 'fork',
+    autorestart: true,
+    watch: false,
+    env: {
+      NODE_ENV: 'production',
+      PORT: 3000
+    },
+    error_file: './logs/err.log',
+    out_file: './logs/out.log',
+    log_file: './logs/combined.log',
+    time: true,
+    log_date_format: 'YYYY-MM-DD HH:mm:ss',
+    max_memory_restart: '1G',
+    node_args: '--max-old-space-size=1024'
+  }]
+};
+`;
 
-## Quick Setup (Windows):
+fs.writeFileSync(path.join(productionDir, 'ecosystem.config.js'), ecosystemConfig);
+console.log('   ✅ ecosystem.config.js created');
 
-### Option 1: Automated Installation
-1. **Run the installer:** Double-click \`install-and-start.bat\`
-   - This will check dependencies, install if needed, and start the system
+// Create deployment script
+console.log('🔧 Creating deployment script...');
+const deployScript = `@echo off
+echo ====================================
+echo Queue Management System Deployment
+echo ====================================
+echo.
 
-### Option 2: Manual Setup
-1. **Configure Environment:**
-   - Copy \`.env.example\` to \`.env\`
-   - Update database connection and JWT secret
+REM Check if running as administrator
+net session >nul 2>&1
+if %errorLevel% neq 0 (
+    echo ERROR: This script must be run as Administrator
+    echo Please right-click Command Prompt and select "Run as administrator"
+    pause
+    exit /b 1
+)
 
-2. **Install Dependencies:**
-   \`\`\`bash
-   npm ci
-   \`\`\`
+echo [1/7] Checking directory and cleaning previous deployment...
+if not exist "package.json" (
+    echo ERROR: package.json not found. Are you in the correct directory?
+    pause
+    exit /b 1
+)
 
-3. **Setup Database:**
-   \`\`\`bash
-   npx prisma generate
-   npx prisma migrate deploy
-   npm run seed
-   \`\`\`
+echo Checking for existing PM2 processes...
+call pm2 list >nul 2>&1
+if %errorLevel% equ 0 (
+    echo Found existing PM2 processes. Stopping them...
+    call pm2 stop all >nul 2>&1
+    call pm2 delete all >nul 2>&1
+    echo Previous PM2 processes cleaned.
+) else (
+    echo No existing PM2 processes found.
+)
 
-4. **Start Production Server:**
-   \`\`\`bash
-   npm start
-   \`\`\`
+echo [2/7] Installing Node.js dependencies...
+call npm install
+if %errorLevel% neq 0 (
+    echo ERROR: Failed to install dependencies
+    pause
+    exit /b 1
+)
 
-## Windows Scripts:
+echo [3/7] Installing PM2 globally...
+call npm install -g pm2
+if %errorLevel% neq 0 (
+    echo ERROR: Failed to install PM2
+    pause
+    exit /b 1
+)
 
-- \`install-and-start.bat\` - Complete setup and start (first time)
-- \`quick-start.bat\` - Quick start (for configured systems)
-- \`stop-production.bat\` - Stop the server
-- \`install-service.bat\` - Install as Windows service (requires admin)
+echo [4/7] Installing PM2 Windows service...
+call npm install -g pm2-windows-service
+if %errorLevel% neq 0 (
+    echo ERROR: Failed to install PM2 Windows service
+    pause
+    exit /b 1
+)
 
-## Windows Service (Auto-start on boot):
+echo [5/7] Setting up environment...
+if not exist ".env" (
+    if exist ".env.example" (
+        copy ".env.example" ".env"
+        echo Environment file created from template.
+        echo IMPORTANT: Edit .env file with your database credentials before continuing.
+        echo.
+        pause
+    ) else (
+        echo ERROR: No .env.example found
+        pause
+        exit /b 1
+    )
+)
 
-1. **Run as Administrator:** Right-click \`install-service.bat\` → "Run as administrator"
-2. **Follow prompts** - The service will be installed and start automatically
+echo [6/7] Setting up database...
+call npx prisma generate
+call npx prisma db push
 
-The system will now start automatically when Windows boots!
+echo.
+echo ====================================
+echo Database Seeding Options
+echo ====================================
+echo 1. Reset database and reseed (removes ALL existing data)
+echo 2. Seed database (may create duplicates if data exists)
+echo 3. Skip seeding and continue
+echo.
+echo NOTE: Press Ctrl+C to terminate deployment entirely
+echo.
+set /p choice="Enter your choice (1, 2, or 3): "
 
-## Manual PM2 Setup:
+if "%%choice%%"=="1" (
+    echo Resetting database and reseeding...
+    call npx prisma migrate reset --force
+    if %%errorLevel%% neq 0 (
+        echo ERROR: Database reset failed
+        pause
+        exit /b 1
+    )
+    echo Database reset and seeding completed.
+) else if "%%choice%%"=="2" (
+    echo Seeding database...
+    call npx prisma db seed
+    if %%errorLevel%% neq 0 (
+        echo WARNING: Database seeding may have failed. This is normal if data already exists.
+    ) else (
+        echo Database seeding completed.
+    )
+) else if "%%choice%%"=="3" (
+    echo Skipping database seeding...
+) else (
+    echo Invalid choice. Skipping database seeding...
+)
 
-1. **Install PM2 globally:**
-   \`\`\`bash
-   npm install -g pm2 pm2-windows-service
-   \`\`\`
+echo [7/7] Starting application with PM2...
+echo Creating Windows-compatible startup script...
+echo @echo off > start-app.bat
+echo cd /d "%%~dp0" >> start-app.bat
+echo npm start >> start-app.bat
 
-2. **Start with PM2:**
-   \`\`\`bash
-   pm2 start ecosystem.config.js
-   pm2 save
-   pm2 startup
-   \`\`\`
+echo Starting application with PM2 (Windows 11 compatible)...
+call pm2 start start-app.bat --name "queue-system"
+if %errorLevel% neq 0 (
+    echo WARNING: Batch file method failed, trying alternative...
+    call pm2 start npm.cmd --name "queue-system" -- start
+    if %errorLevel% neq 0 (
+        echo ERROR: Failed to start application with both methods
+        echo Try manually: pm2 start start-app.bat --name "queue-system"
+        pause
+        exit /b 1
+    )
+)
 
-3. **Install Windows Service:**
-   \`\`\`bash
-   pm2-service-install
-   pm2-service-start
-   \`\`\`
+call pm2 save
+if %errorLevel% neq 0 (
+    echo WARNING: Failed to save PM2 configuration
+)
 
-## Management Commands:
+echo.
+echo Installing PM2 as Windows service...
+echo Checking if PM2 service already exists...
+sc query PM2 >nul 2>&1
+if %errorLevel% equ 0 (
+    echo PM2 service already exists. Skipping installation.
+    echo Ensuring service is running...
+    net start PM2 >nul 2>&1
+    if %errorLevel% equ 0 (
+        echo PM2 service started successfully.
+    ) else (
+        echo PM2 service is already running.
+    )
+) else (
+    echo PM2 service not found. Installing...
+    call pm2-service-install
+    if %errorLevel% neq 0 (
+        echo WARNING: PM2 service installation failed. You may need to install manually.
+        echo Run: pm2-service-install
+    ) else (
+        echo PM2 service installed successfully.
+    )
+)
 
-- \`pm2 status\` - Check application status
-- \`pm2 logs queue-system\` - View application logs
-- \`pm2 restart queue-system\` - Restart application
-- \`pm2 stop queue-system\` - Stop application
+echo.
+echo ====================================
+echo Deployment completed successfully!
+echo ====================================
+echo.
+echo Application is running at: http://localhost:3000
+echo.
+echo Default login credentials:
+echo   Admin - Username: admin, Password: admin123
+echo   Cashier - Username: cashier, Password: cashier123
+echo.
+echo Service management commands:
+echo   pm2 status          - View application status
+echo   pm2 logs            - View application logs
+echo   pm2 restart all     - Restart application
+echo   pm2 stop all        - Stop application
+echo.
+echo Windows service:
+echo   net start PM2       - Start PM2 service
+echo   net stop PM2        - Stop PM2 service
+echo.
+pause
+`;
 
-## Access:
-- **Application:** http://localhost:3000
-- **Admin Dashboard:** http://localhost:3000/admin
-- **User Interface:** http://localhost:3000/user
-- **Display Screen:** http://localhost:3000/display
-- **Reservation:** http://localhost:3000/reservation
+fs.writeFileSync(path.join(productionDir, 'deploy.bat'), deployScript);
+console.log('   ✅ deploy.bat created');
 
-## Default Accounts:
-- **Admin:** admin / admin123
-- **Cashier 1:** cashier1 / cashier123
-- **Cashier 2:** cashier2 / cashier123
+// Create logs directory
+console.log('📁 Creating logs directory...');
+const logsDir = path.join(productionDir, 'logs');
+fs.mkdirSync(logsDir, { recursive: true });
+fs.writeFileSync(path.join(logsDir, '.gitkeep'), '');
+console.log('   ✅ logs/ directory created');
 
-## Troubleshooting:
+console.log('\n🎉 Production package created successfully!');
+console.log(`📦 Location: ${productionDir}`);
+console.log('\nNext steps:');
+console.log('1. Copy the production/ folder to your target server');
+console.log('2. Run deploy.bat as Administrator on the target server');
+console.log('3. Follow the prompts to complete the setup');
 
-- **Port 3000 in use:** Change PORT in .env or ecosystem.config.js
-- **Database errors:** Check DATABASE_URL in .env
-- **Permission errors:** Run install-service.bat as Administrator
-- **Service won't start:** Check Windows Event Viewer for details
-
-## Environment Variables (.env):
-
-\`\`\`
-DATABASE_URL="mysql://username:password@localhost:3306/queue_production"
-JWT_SECRET="your-super-secure-jwt-secret-change-this-in-production"
-NODE_ENV="production"
-PORT=3000
-\`\`\`
-`
-
-fs.writeFileSync(path.join(prodDir, 'README.md'), productionReadme)
-
-console.log('✅ Production package created successfully!')
-console.log(`📂 Location: ${prodDir}`)
-console.log('🚀 Ready for deployment!')
+/**
+ * Recursively copy directory
+ */
+function copyDirectory(src, dest) {
+  if (!fs.existsSync(dest)) {
+    fs.mkdirSync(dest, { recursive: true });
+  }
+  
+  const entries = fs.readdirSync(src, { withFileTypes: true });
+  
+  for (const entry of entries) {
+    const srcPath = path.join(src, entry.name);
+    const destPath = path.join(dest, entry.name);
+    
+    if (entry.isDirectory()) {
+      copyDirectory(srcPath, destPath);
+    } else {
+      fs.copyFileSync(srcPath, destPath);
+    }
+  }
+}

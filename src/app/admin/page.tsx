@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { UserRole, LaneType } from '@prisma/client'
+import { toast } from 'sonner'
 
 interface User {
   id: number
@@ -49,7 +50,6 @@ export default function AdminDashboard() {
   const [users, setUsers] = useState<User[]>([])
   const [lanes, setLanes] = useState<Lane[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [authLoading, setAuthLoading] = useState(true)
 
@@ -103,9 +103,11 @@ export default function AdminDashboard() {
   const handleLogout = async () => {
     try {
       await fetch('/api/auth/logout', { method: 'POST' })
+      toast.success('Logged out successfully')
       window.location.href = '/'
     } catch (err) {
       console.error('Logout error:', err)
+      toast.error('Logout failed, redirecting anyway...')
       window.location.href = '/'
     }
   }
@@ -128,7 +130,7 @@ export default function AdminDashboard() {
       setUsers(usersData)
       setLanes(lanesData)
     } catch (err) {
-      setError('Failed to load data')
+      toast.error('Failed to load data. Please try refreshing the page.')
       console.error(err)
     } finally {
       setLoading(false)
@@ -152,8 +154,10 @@ export default function AdminDashboard() {
       setShowUserDialog(false)
       resetUserForm()
       loadData()
+      toast.success('User created successfully')
     } catch (error: unknown) {
-      setError(error instanceof Error ? error.message : 'Failed to create user')
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create user'
+      toast.error(errorMessage)
     }
   }
 
@@ -180,8 +184,10 @@ export default function AdminDashboard() {
       setEditingUser(null)
       resetUserForm()
       loadData()
+      toast.success('User updated successfully')
     } catch (error: unknown) {
-      setError(error instanceof Error ? error.message : 'Failed to update user')
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update user'
+      toast.error(errorMessage)
     }
   }
 
@@ -199,7 +205,7 @@ export default function AdminDashboard() {
 
       loadData()
     } catch (error) {
-      setError('Failed to update user status')
+      toast.error('Failed to update user status')
       console.error('Toggle user status error:', error)
     }
   }
@@ -246,8 +252,10 @@ export default function AdminDashboard() {
       setShowLaneDialog(false)
       resetLaneForm()
       loadData()
+      toast.success('Lane created successfully')
     } catch (error: unknown) {
-      setError(error instanceof Error ? error.message : 'Failed to create lane')
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create lane'
+      toast.error(errorMessage)
     }
   }
 
@@ -270,8 +278,10 @@ export default function AdminDashboard() {
       setEditingLane(null)
       resetLaneForm()
       loadData()
+      toast.success('Lane updated successfully')
     } catch (error: unknown) {
-      setError(error instanceof Error ? error.message : 'Failed to update lane')
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update lane'
+      toast.error(errorMessage)
     }
   }
 
@@ -289,7 +299,7 @@ export default function AdminDashboard() {
 
       loadData()
     } catch (error) {
-      setError('Failed to update lane status')
+      toast.error('Failed to update lane status')
       console.error('Toggle lane status error:', error)
     }
   }
@@ -337,8 +347,10 @@ export default function AdminDashboard() {
       setSelectedLane(null)
       setSelectedUserId(null)
       loadData()
+      toast.success('Staff assigned successfully')
     } catch (error: unknown) {
-      setError(error instanceof Error ? error.message : 'Failed to assign staff')
+      const errorMessage = error instanceof Error ? error.message : 'Failed to assign staff'
+      toast.error(errorMessage)
     }
   }
 
@@ -354,9 +366,10 @@ export default function AdminDashboard() {
         throw new Error('Failed to unassign staff')
       }
 
+      toast.success('Staff member unassigned successfully')
       loadData()
     } catch (error) {
-      setError('Failed to unassign staff')
+      toast.error('Failed to unassign staff')
       console.error('Unassign staff error:', error)
     }
   }
@@ -414,20 +427,6 @@ export default function AdminDashboard() {
           <Button variant="outline" onClick={handleLogout}>Logout</Button>
         </div>
       </div>
-
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-          {error}
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={() => setError('')}
-            className="ml-2"
-          >
-            ×
-          </Button>
-        </div>
-      )}
 
       {/* Users Management */}
       <Card>
