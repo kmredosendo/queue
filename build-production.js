@@ -39,14 +39,33 @@ const essentialItems = [
   'eslint.config.mjs'
 ];
 
-// Create production directory
+// Ensure completely clean production build by removing existing folder
+console.log('🧹 Ensuring completely clean production build...');
 if (fs.existsSync(productionDir)) {
-  console.log('📁 Removing existing production directory...');
-  fs.rmSync(productionDir, { recursive: true, force: true });
+  console.log('📁 Completely removing existing production directory...');
+  try {
+    fs.rmSync(productionDir, { recursive: true, force: true });
+    console.log('   ✅ Existing production directory removed successfully');
+  } catch (error) {
+    console.error('   ❌ Error removing production directory:', error.message);
+    console.log('   ⚠️  Please manually delete the production folder and try again');
+    process.exit(1);
+  }
+} else {
+  console.log('   ✅ No existing production directory found');
 }
 
-console.log('📁 Creating production directory...');
+console.log('📁 Creating fresh production directory...');
 fs.mkdirSync(productionDir, { recursive: true });
+console.log('   ✅ Fresh, clean production directory created');
+
+// Verify the directory is empty and ready
+const dirContents = fs.readdirSync(productionDir);
+if (dirContents.length === 0) {
+  console.log('   ✅ Production directory verified clean and ready');
+} else {
+  console.log('   ⚠️  Warning: Production directory not empty:', dirContents);
+}
 
 // Copy essential files and directories
 console.log('📋 Copying essential files...');
@@ -93,7 +112,8 @@ const ecosystemConfig = `// PM2 Configuration for Windows 11 Production
 module.exports = {
   apps: [{
     name: 'queue-system',
-    script: './start-app.bat',
+    script: 'npm',
+    args: 'start',
     instances: 1,
     exec_mode: 'fork',
     autorestart: true,
@@ -230,22 +250,13 @@ if "%%choice%%"=="1" (
 )
 
 echo [7/7] Starting application with PM2...
-echo Creating Windows-compatible startup script...
-echo @echo off > start-app.bat
-echo cd /d "%%~dp0" >> start-app.bat
-echo npm start >> start-app.bat
-
-echo Starting application with PM2 (Windows 11 compatible)...
-call pm2 start start-app.bat --name "queue-system"
+echo Starting application with PM2...
+call pm2 start ecosystem.config.js
 if %errorLevel% neq 0 (
-    echo WARNING: Batch file method failed, trying alternative...
-    call pm2 start npm.cmd --name "queue-system" -- start
-    if %errorLevel% neq 0 (
-        echo ERROR: Failed to start application with both methods
-        echo Try manually: pm2 start start-app.bat --name "queue-system"
-        pause
-        exit /b 1
-    )
+    echo ERROR: Failed to start application with PM2
+    echo Please check the configuration and try manually: pm2 start ecosystem.config.js
+    pause
+    exit /b 1
 )
 
 call pm2 save
