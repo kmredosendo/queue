@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
       const os = await import('os')
       
       const tempDir = os.tmpdir()
-      const ticketFile = path.join(tempDir, `ticket-${Date.now()}.txt`)
+      // const ticketFile = path.join(tempDir, `ticket-${Date.now()}.txt`)  // Not used with PowerShell approach
       
       // Format timestamp to match your layout
       const formattedDate = new Date(timestamp).toLocaleString('en-US', {

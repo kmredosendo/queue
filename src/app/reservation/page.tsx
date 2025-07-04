@@ -131,13 +131,13 @@ export default function ReservationPage() {
     }
   }
 
-  const formatEstimatedWait = (minutes: number) => {
-    if (minutes < 1) return 'Less than 1 minute'
-    if (minutes < 60) return `${minutes} minutes`
-    const hours = Math.floor(minutes / 60)
-    const remainingMinutes = minutes % 60
-    return `${hours}h ${remainingMinutes}m`
-  }
+  // const formatEstimatedWait = (minutes: number) => {
+  //   if (minutes < 1) return 'Less than 1 minute'
+  //   if (minutes < 60) return `${minutes} minutes`
+  //   const hours = Math.floor(minutes / 60)
+  //   const remainingMinutes = minutes % 60
+  //   return `${hours}h ${remainingMinutes}m`
+  // }
 
   if (isLoading) {
     return (
