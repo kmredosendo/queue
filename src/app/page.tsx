@@ -75,11 +75,43 @@ export default function HomePage() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <div className="w-full max-w-4xl space-y-8">
         <div className="text-center">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Queue Management System</h1>
-          <p className="text-lg text-gray-600">Efficient queue management for better customer service</p>
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 mb-2">Queue Management System</h1>
+          <p className="text-base sm:text-lg text-gray-600">Efficient queue management for better customer service</p>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-8">
+        <div className="grid lg:grid-cols-2 gap-6 lg:gap-8">
+          {/* Quick Access Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Quick Access</CardTitle>
+              <CardDescription>Direct access to public interfaces</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Button
+                onClick={() => handleQuickAccess('RESERVATION')}
+                className="w-full h-16 sm:h-20 text-base sm:text-lg flex flex-col items-center justify-center gap-1"
+                variant="outline"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-2xl">📱</span>
+                  <span className="font-semibold">Customer Reservation</span>
+                </div>
+                <span className="text-xs sm:text-sm text-gray-500">Get your queue number</span>
+              </Button>
+              <Button
+                onClick={() => handleQuickAccess('DISPLAY')}
+                className="w-full h-16 sm:h-20 text-base sm:text-lg flex flex-col items-center justify-center gap-1"
+                variant="outline"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-2xl">📺</span>
+                  <span className="font-semibold">Queue Display</span>
+                </div>
+                <span className="text-xs sm:text-sm text-gray-500">View current queue status</span>
+              </Button>
+            </CardContent>
+          </Card>
+
           {/* Login Card */}
           <Card>
             <CardHeader>
@@ -114,52 +146,7 @@ export default function HomePage() {
               </form>
             </CardContent>
           </Card>
-
-          {/* Quick Access Card */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Quick Access</CardTitle>
-              <CardDescription>Direct access to public interfaces</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <Button
-                onClick={() => handleQuickAccess('RESERVATION')}
-                className="w-full h-16 text-lg"
-                variant="outline"
-              >
-                📱 Customer Reservation
-                <span className="block text-sm text-gray-500">Get your queue number</span>
-              </Button>
-              <Button
-                onClick={() => handleQuickAccess('DISPLAY')}
-                className="w-full h-16 text-lg"
-                variant="outline"
-              >
-                📺 Queue Display
-                <span className="block text-sm text-gray-500">View current queue status</span>
-              </Button>
-            </CardContent>
-          </Card>
         </div>
-
-        {/* Demo Credentials */}
-        <Card className="bg-yellow-50 border-yellow-200">
-          <CardContent className="pt-6">
-            <h3 className="font-semibold text-yellow-800 mb-2">Demo Credentials</h3>
-            <div className="grid md:grid-cols-2 gap-4 text-sm">
-              <div>
-                <p className="font-medium text-yellow-700">Admin Access:</p>
-                <p>Username: admin</p>
-                <p>Password: admin123</p>
-              </div>
-              <div>
-                <p className="font-medium text-yellow-700">Cashier Access:</p>
-                <p>Username: cashier</p>
-                <p>Password: cashier123</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
       </div>
     </div>
   )
