@@ -9,8 +9,25 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { UserRole, LaneType } from '@prisma/client'
 import { toast } from 'sonner'
+import { 
+  RefreshCw, 
+  LogOut, 
+  UserPlus, 
+  Edit, 
+  UserCheck, 
+  UserX, 
+  Plus, 
+  Users, 
+  Power, 
+  PowerOff, 
+  Trash2, 
+  X,
+  Save,
+  Check
+} from 'lucide-react'
 
 interface User {
   id: number
@@ -76,6 +93,10 @@ export default function AdminDashboard() {
   const [showAssignDialog, setShowAssignDialog] = useState(false)
   const [selectedLane, setSelectedLane] = useState<Lane | null>(null)
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null)
+
+  // Delete confirmation state
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [laneToDelete, setLaneToDelete] = useState<{ id: number; name: string } | null>(null)
 
   const checkAuth = useCallback(async () => {
     try {
@@ -304,6 +325,35 @@ export default function AdminDashboard() {
     }
   }
 
+  const handleDeleteLane = (laneId: number, laneName: string) => {
+    setLaneToDelete({ id: laneId, name: laneName })
+    setShowDeleteDialog(true)
+  }
+
+  const confirmDeleteLane = async () => {
+    if (!laneToDelete) return
+
+    try {
+      const response = await fetch(`/api/lanes/${laneToDelete.id}`, {
+        method: 'DELETE'
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to delete lane')
+      }
+
+      loadData()
+      toast.success('Lane deleted successfully')
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to delete lane'
+      toast.error(errorMessage)
+    } finally {
+      setShowDeleteDialog(false)
+      setLaneToDelete(null)
+    }
+  }
+
   const resetLaneForm = () => {
     setLaneForm({
       name: '',
@@ -380,16 +430,44 @@ export default function AdminDashboard() {
     setShowAssignDialog(true)
   }
 
-  // Get available staff (USER role only, not already assigned to the lane)
+  // Get available staff (USER role only, considering lane assignment rules)
   const getAvailableStaff = () => {
     if (!selectedLane) return []
     
     const assignedUserIds = selectedLane.assignedUsers.map(au => au.user.id)
-    return users.filter(user => 
-      user.role === UserRole.USER && 
-      user.isActive && 
-      !assignedUserIds.includes(user.id)
-    )
+    
+    return users.filter(user => {
+      // Must be USER role and active
+      if (user.role !== UserRole.USER || !user.isActive) return false
+      
+      // Must not be already assigned to this specific lane
+      if (assignedUserIds.includes(user.id)) return false
+      
+      // Check current assignments for this user
+      const userAssignments = user.assignedLanes || []
+      
+      // If user has 2 assignments already, can't assign more
+      if (userAssignments.length >= 2) return false
+      
+      // If user has no assignments, can assign to any lane
+      if (userAssignments.length === 0) return true
+      
+      // If user has 1 assignment, check if they can have this lane type
+      const hasRegular = userAssignments.some(al => 
+        lanes.find(l => l.id === al.lane.id)?.type === LaneType.REGULAR
+      )
+      const hasPwdSenior = userAssignments.some(al => 
+        lanes.find(l => l.id === al.lane.id)?.type === LaneType.PWD_SENIOR
+      )
+      
+      // If trying to assign REGULAR lane but user already has one
+      if (selectedLane.type === LaneType.REGULAR && hasRegular) return false
+      
+      // If trying to assign PWD_SENIOR lane but user already has one
+      if (selectedLane.type === LaneType.PWD_SENIOR && hasPwdSenior) return false
+      
+      return true
+    })
   }
 
   // Show loading while checking authentication
@@ -432,8 +510,12 @@ export default function AdminDashboard() {
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Admin Dashboard</h1>
         <div className="flex gap-2">
-          <Button onClick={() => window.location.reload()}>Refresh</Button>
-          <Button variant="outline" onClick={handleLogout}>Logout</Button>
+          <Button onClick={() => window.location.reload()} variant="outline" size="sm">
+            <RefreshCw className="h-4 w-4" />
+          </Button>
+          <Button variant="outline" onClick={handleLogout} size="sm">
+            <LogOut className="h-4 w-4" />
+          </Button>
         </div>
       </div>
 
@@ -445,7 +527,10 @@ export default function AdminDashboard() {
               <CardTitle>Users Management</CardTitle>
               <CardDescription>Manage system users and their roles</CardDescription>
             </div>
-            <Button onClick={() => openUserDialog()}>Add User</Button>
+            <Button onClick={() => openUserDialog()}>
+              <UserPlus className="h-4 w-4 mr-2" />
+              Add User
+            </Button>
           </div>
         </CardHeader>
         <CardContent>
@@ -476,7 +561,26 @@ export default function AdminDashboard() {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    {user.assignedLanes?.map(al => al.lane.name).join(', ') || 'None'}
+                    {user.assignedLanes && user.assignedLanes.length > 0 ? (
+                      <div className="flex flex-col gap-1">
+                        {user.assignedLanes.map(al => {
+                          const lane = lanes.find(l => l.id === al.lane.id)
+                          return (
+                            <div key={al.lane.id} className="flex items-center gap-2">
+                              <span className="text-sm">{al.lane.name}</span>
+                              <Badge variant={lane?.type === LaneType.PWD_SENIOR ? 'secondary' : 'outline'} className="text-xs">
+                                {lane?.type === LaneType.PWD_SENIOR ? 'PWD/Senior' : 'Regular'}
+                              </Badge>
+                            </div>
+                          )
+                        })}
+                        <span className="text-xs text-muted-foreground">
+                          {user.assignedLanes.length}/2 assignments
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground">None</span>
+                    )}
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-2">
@@ -485,14 +589,14 @@ export default function AdminDashboard() {
                         size="sm"
                         onClick={() => openUserDialog(user)}
                       >
-                        Edit
+                        <Edit className="h-4 w-4" />
                       </Button>
                       <Button 
                         variant={user.isActive ? 'destructive' : 'default'}
                         size="sm"
                         onClick={() => handleToggleUserStatus(user.id, user.isActive)}
                       >
-                        {user.isActive ? 'Deactivate' : 'Activate'}
+                        {user.isActive ? <UserX className="h-4 w-4" /> : <UserCheck className="h-4 w-4" />}
                       </Button>
                     </div>
                   </TableCell>
@@ -511,7 +615,10 @@ export default function AdminDashboard() {
               <CardTitle>Lanes Management</CardTitle>
               <CardDescription>Manage service lanes and staff assignments</CardDescription>
             </div>
-            <Button onClick={() => openLaneDialog()}>Add Lane</Button>
+            <Button onClick={() => openLaneDialog()}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Lane
+            </Button>
           </div>
         </CardHeader>
         <CardContent>
@@ -554,7 +661,7 @@ export default function AdminDashboard() {
                             onClick={() => handleUnassignStaff(lane.id, au.user.id)}
                             className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
                           >
-                            ×
+                            <X className="h-3 w-3" />
                           </Button>
                         </div>
                       )) || 'No staff assigned'}
@@ -567,21 +674,28 @@ export default function AdminDashboard() {
                         size="sm"
                         onClick={() => openLaneDialog(lane)}
                       >
-                        Edit
+                        <Edit className="h-4 w-4" />
                       </Button>
                       <Button 
                         variant="outline" 
                         size="sm"
                         onClick={() => openAssignDialog(lane)}
                       >
-                        Assign Staff
+                        <Users className="h-4 w-4" />
                       </Button>
                       <Button 
                         variant={lane.isActive ? 'destructive' : 'default'}
                         size="sm"
                         onClick={() => handleToggleLaneStatus(lane.id, lane.isActive)}
                       >
-                        {lane.isActive ? 'Deactivate' : 'Activate'}
+                        {lane.isActive ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => handleDeleteLane(lane.id, lane.name)}
+                      >
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   </TableCell>
@@ -644,9 +758,11 @@ export default function AdminDashboard() {
             </div>
             <div className="flex justify-end space-x-2">
               <Button variant="outline" onClick={() => setShowUserDialog(false)}>
+                <X className="h-4 w-4 mr-2" />
                 Cancel
               </Button>
               <Button onClick={editingUser ? handleUpdateUser : handleCreateUser}>
+                <Check className="h-4 w-4 mr-2" />
                 {editingUser ? 'Update' : 'Create'}
               </Button>
             </div>
@@ -694,9 +810,11 @@ export default function AdminDashboard() {
             </div>
             <div className="flex justify-end space-x-2">
               <Button variant="outline" onClick={() => setShowLaneDialog(false)}>
+                <X className="h-4 w-4 mr-2" />
                 Cancel
               </Button>
               <Button onClick={editingLane ? handleUpdateLane : handleCreateLane}>
+                <Check className="h-4 w-4 mr-2" />
                 {editingLane ? 'Update' : 'Create'}
               </Button>
             </div>
@@ -710,7 +828,11 @@ export default function AdminDashboard() {
           <DialogHeader>
             <DialogTitle>Assign Staff to {selectedLane?.name}</DialogTitle>
             <DialogDescription>
-              Select a staff member to assign to this lane
+              Select a staff member to assign to this {selectedLane?.type === LaneType.PWD_SENIOR ? 'PWD/Senior Citizens' : 'Regular'} lane.
+              <br />
+              <span className="text-sm text-muted-foreground">
+                Note: Each user can be assigned to maximum 2 lanes (1 Regular + 1 PWD/Senior)
+              </span>
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -724,25 +846,69 @@ export default function AdminDashboard() {
                   <SelectValue placeholder="Select a staff member" />
                 </SelectTrigger>
                 <SelectContent>
-                  {getAvailableStaff().map((user) => (
-                    <SelectItem key={user.id} value={user.id.toString()}>
-                      {user.name} ({user.username})
+                  {getAvailableStaff().length > 0 ? (
+                    getAvailableStaff().map((user) => (
+                      <SelectItem key={user.id} value={user.id.toString()}>
+                        {user.name} ({user.username})
+                        {user.assignedLanes && user.assignedLanes.length > 0 && (
+                          <span className="text-xs text-muted-foreground ml-2">
+                            - Currently assigned: {user.assignedLanes.length}/2 lanes
+                          </span>
+                        )}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="no-staff" disabled>
+                      No available staff for this lane type
                     </SelectItem>
-                  ))}
+                  )}
                 </SelectContent>
               </Select>
+              {getAvailableStaff().length === 0 && (
+                <p className="text-sm text-muted-foreground">
+                  All eligible staff are either already assigned to this lane, 
+                  have reached the maximum of 2 lane assignments, or already have a {selectedLane?.type === LaneType.PWD_SENIOR ? 'PWD/Senior' : 'Regular'} lane assignment.
+                </p>
+              )}
             </div>
             <div className="flex justify-end space-x-2">
               <Button variant="outline" onClick={() => setShowAssignDialog(false)}>
+                <X className="h-4 w-4 mr-2" />
                 Cancel
               </Button>
-              <Button onClick={handleAssignStaff} disabled={!selectedUserId}>
+              <Button onClick={handleAssignStaff} disabled={!selectedUserId || getAvailableStaff().length === 0}>
+                <UserCheck className="h-4 w-4 mr-2" />
                 Assign
               </Button>
             </div>
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Lane Confirmation Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Lane</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete lane "{laneToDelete?.name}"? 
+              This action cannot be undone and will remove all associated data.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setLaneToDelete(null)}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDeleteLane}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete Lane
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
