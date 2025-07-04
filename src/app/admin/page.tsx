@@ -395,8 +395,11 @@ export default function AdminDashboard() {
   // Show loading while checking authentication
   if (authLoading) {
     return (
-      <div className="container mx-auto p-6">
-        <div className="text-center">Checking authentication...</div>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Checking authentication...</p>
+        </div>
       </div>
     )
   }
@@ -404,16 +407,22 @@ export default function AdminDashboard() {
   // If not authenticated, user will be redirected to login page
   if (!isAuthenticated) {
     return (
-      <div className="container mx-auto p-6">
-        <div className="text-center">Redirecting to login...</div>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Redirecting to login...</p>
+        </div>
       </div>
     )
   }
 
   if (loading) {
     return (
-      <div className="container mx-auto p-6">
-        <div className="text-center">Loading...</div>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading dashboard...</p>
+        </div>
       </div>
     )
   }
