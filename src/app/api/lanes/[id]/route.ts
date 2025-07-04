@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getCurrentUser, hasRole } from '@/lib/auth'
-import { UserRole } from '@prisma/client'
+import { UserRole, LaneType } from '@prisma/client'
 
 export async function PATCH(
   request: NextRequest,
@@ -14,7 +14,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { name, description, isActive } = await request.json()
+    const { name, description, isActive, type } = await request.json()
     const laneId = parseInt(resolvedParams.id)
 
     if (isNaN(laneId)) {
@@ -26,11 +26,13 @@ export async function PATCH(
       name?: string
       description?: string
       isActive?: boolean
+      type?: LaneType
     } = {}
     
     if (name !== undefined) updateData.name = name
     if (description !== undefined) updateData.description = description
     if (isActive !== undefined) updateData.isActive = isActive
+    if (type !== undefined) updateData.type = type as LaneType
 
     const updatedLane = await prisma.lane.update({
       where: { id: laneId },
