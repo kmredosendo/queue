@@ -24,13 +24,33 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Get the next queue number
-    const lastQueueItem = await prisma.queueItem.findFirst({
-      where: { laneId },
+    // Get today's date range (start and end of day)
+    const today = new Date()
+    const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+    const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1)
+
+    // Get the highest queue number from today only
+    const lastQueueItemToday = await prisma.queueItem.findFirst({
+      where: { 
+        laneId,
+        createdAt: {
+          gte: startOfDay,
+          lt: endOfDay
+        }
+      },
       orderBy: { number: 'desc' }
     })
 
-    const nextNumber = (lastQueueItem?.number || 0) + 1
+    // Calculate next number with daily reset and 999 max limit (simple cycling)
+    let nextNumber = 1
+    if (lastQueueItemToday) {
+      if (lastQueueItemToday.number >= 999) {
+        // After 999, cycle back to 1
+        nextNumber = 1
+      } else {
+        nextNumber = lastQueueItemToday.number + 1
+      }
+    }
 
     // Create queue item
     await prisma.queueItem.create({
@@ -41,13 +61,17 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    // Calculate waiting count (people ahead of this person)
+    // Calculate waiting count (people ahead of this person in today's queue)
     const waitingCount = await prisma.queueItem.count({
       where: {
         laneId,
         status: QueueItemStatus.WAITING,
         number: {
           lt: nextNumber
+        },
+        createdAt: {
+          gte: startOfDay,
+          lt: endOfDay
         }
       }
     })
@@ -67,7 +91,12 @@ export async function POST(request: NextRequest) {
 
 export async function GET() {
   try {
-    // Get current queue status for all active lanes
+    // Get today's date range (start and end of day)
+    const today = new Date()
+    const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+    const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1)
+
+    // Get current queue status for all active lanes (today's data only)
     const lanes = await prisma.lane.findMany({
       where: { isActive: true },
       select: {
@@ -80,6 +109,10 @@ export async function GET() {
           where: {
             status: {
               in: [QueueItemStatus.WAITING, QueueItemStatus.CALLED]
+            },
+            createdAt: {
+              gte: startOfDay,
+              lt: endOfDay
             }
           },
           select: {
@@ -96,16 +129,30 @@ export async function GET() {
       }
     })
 
-    const laneStatus = lanes.map(lane => ({
-      id: lane.id,
-      name: lane.name,
-      description: lane.description,
-      currentNumber: lane.currentNumber,
-      lastServedNumber: lane.lastServedNumber,
-      waitingCount: lane.queueItems.filter(item => item.status === QueueItemStatus.WAITING).length,
-      calledCount: lane.queueItems.filter(item => item.status === QueueItemStatus.CALLED).length,
-      nextNumber: Math.max(...lane.queueItems.map(item => item.number), 0) + 1
-    }))
+    const laneStatus = lanes.map(lane => {
+      const waitingItems = lane.queueItems.filter(item => item.status === QueueItemStatus.WAITING)
+      const calledItems = lane.queueItems.filter(item => item.status === QueueItemStatus.CALLED)
+      
+      // Calculate next number with simple cycling (1-999, then back to 1)
+      const maxNumberToday = Math.max(...lane.queueItems.map(item => item.number), 0)
+      let nextNumber = maxNumberToday + 1
+      
+      // If we would exceed 999, cycle back to 1
+      if (nextNumber > 999) {
+        nextNumber = 1
+      }
+
+      return {
+        id: lane.id,
+        name: lane.name,
+        description: lane.description,
+        currentNumber: lane.currentNumber,
+        lastServedNumber: lane.lastServedNumber,
+        waitingCount: waitingItems.length,
+        calledCount: calledItems.length,
+        nextNumber: nextNumber
+      }
+    })
 
     return NextResponse.json(laneStatus)
   } catch (error) {

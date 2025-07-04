@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getCurrentUser, hasRole } from '@/lib/auth'
 import { UserRole, QueueItemStatus } from '@prisma/client'
+import { broadcastQueueUpdate } from '../events/route'
 
 export async function POST(request: NextRequest) {
   try {
@@ -158,6 +159,20 @@ export async function POST(request: NextRequest) {
           { error: 'Invalid action' },
           { status: 400 }
         )
+    }
+
+    // Broadcast the update to all connected display clients
+    try {
+      broadcastQueueUpdate({
+        type: 'operation',
+        action,
+        laneId,
+        result,
+        timestamp: new Date().toISOString()
+      })
+    } catch (error) {
+      console.error('Failed to broadcast queue update:', error)
+      // Don't fail the operation if broadcast fails
     }
 
     return NextResponse.json(result)

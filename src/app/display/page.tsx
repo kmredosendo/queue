@@ -43,7 +43,11 @@ export default function DisplayPage() {
   const [previousLanes, setPreviousLanes] = useState<LaneStatus[]>([])
   const [recentlyUpdatedLanes, setRecentlyUpdatedLanes] = useState<Set<string>>(new Set())
   const [lastOperationCheck, setLastOperationCheck] = useState(new Date())
+  const [isPageVisible, setIsPageVisible] = useState(true)
+  const [isConnected, setIsConnected] = useState(false)
+  const [connectionRetries, setConnectionRetries] = useState(0)
   const audioRef = useRef<ExtendedAudioElement | null>(null)
+  const eventSourceRef = useRef<EventSource | null>(null)
 
   // Initialize audio
   useEffect(() => {
@@ -118,76 +122,147 @@ export default function DisplayPage() {
   }, [lanes, previousLanes])
 
   // Check for recent queue operations (CALL and BUZZ)
-  const checkRecentOperations = useCallback(async () => {
-    try {
-      const response = await fetch(`/api/queue/recent-operations?since=${lastOperationCheck.toISOString()}`)
-      if (response.ok) {
-        const operations = await response.json()
-        
-        // Play notification for CALL and BUZZ operations
-        const soundOperations = operations.filter((op: QueueOperation) => 
-          ['CALL', 'BUZZ'].includes(op.action) && 
-          new Date(op.createdAt) > lastOperationCheck
-        )
-        
-        if (soundOperations.length > 0 && audioRef.current && audioRef.current.playNotification) {
-          setTimeout(() => {
-            audioRef.current!.playNotification!()
-          }, 100)
-          
-          // Add visual feedback for the affected lanes
-          const affectedLaneIds = new Set<string>(soundOperations.map((op: QueueOperation) => op.laneId))
-          setRecentlyUpdatedLanes(prev => new Set([...prev, ...affectedLaneIds]))
-          
-          // Clear highlights after 3 seconds
-          setTimeout(() => {
-            setRecentlyUpdatedLanes(prev => {
-              const newSet = new Set(prev)
-              affectedLaneIds.forEach((id: string) => newSet.delete(id))
-              return newSet
-            })
-          }, 3000)
-        }
-        
-        setLastOperationCheck(new Date())
-      }
-    } catch (error) {
-      console.error('Error checking recent operations:', error)
-    }
-  }, [lastOperationCheck])
-
+  // Server-Sent Events connection for real-time updates
   useEffect(() => {
-    // Fetch lane status immediately and then every 3 seconds
-    fetchLaneStatus()
-    const statusInterval = setInterval(fetchLaneStatus, 3000)
-    
-    // Check for recent operations every 2 seconds
-    checkRecentOperations()
-    const operationsInterval = setInterval(checkRecentOperations, 2000)
+    if (!isPageVisible) return // Don't connect when page is hidden
 
-    // Update time every second
+    const connectSSE = () => {
+      try {
+        eventSourceRef.current = new EventSource('/api/queue/events')
+
+        eventSourceRef.current.onopen = () => {
+          console.log('SSE connection opened')
+          setIsConnected(true)
+          setConnectionRetries(0)
+          setIsLoading(false)
+        }
+
+        eventSourceRef.current.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data)
+            
+            if (data.type === 'lanes_update') {
+              setLanes(data.lanes)
+            } else if (data.type === 'operation') {
+              // Handle real-time operation updates
+              if (['CALL', 'BUZZ'].includes(data.action)) {
+                // Play notification sound
+                if (audioRef.current && audioRef.current.playNotification) {
+                  setTimeout(() => {
+                    audioRef.current!.playNotification!()
+                  }, 50)
+                }
+                
+                // Add visual feedback
+                setRecentlyUpdatedLanes(prev => new Set([...prev, data.laneId.toString()]))
+                setTimeout(() => {
+                  setRecentlyUpdatedLanes(prev => {
+                    const newSet = new Set(prev)
+                    newSet.delete(data.laneId.toString())
+                    return newSet
+                  })
+                }, 3000)
+              }
+              
+              // Refresh lane data after operation
+              fetchLaneStatus()
+            }
+          } catch (error) {
+            console.error('Error parsing SSE data:', error)
+          }
+        }
+
+        eventSourceRef.current.onerror = (error) => {
+          console.error('SSE connection error:', error)
+          setIsConnected(false)
+          
+          // Retry connection with exponential backoff
+          if (connectionRetries < 5) {
+            const retryDelay = Math.min(1000 * Math.pow(2, connectionRetries), 30000)
+            setTimeout(() => {
+              setConnectionRetries(prev => prev + 1)
+              connectSSE()
+            }, retryDelay)
+          } else {
+            // Fall back to polling if SSE keeps failing
+            console.warn('SSE failed multiple times, falling back to polling')
+            startFallbackPolling()
+          }
+        }
+      } catch (error) {
+        console.error('Failed to create SSE connection:', error)
+        startFallbackPolling()
+      }
+    }
+
+    connectSSE()
+
+    return () => {
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close()
+        eventSourceRef.current = null
+      }
+    }
+  }, [isPageVisible])
+
+  // Fallback polling for when SSE fails
+  const startFallbackPolling = () => {
+    console.log('Starting fallback polling mode')
+    const interval = setInterval(() => {
+      if (isPageVisible) {
+        fetchLaneStatus()
+      }
+    }, 2000) // Reasonable fallback interval
+
+    return () => clearInterval(interval)
+  }
+
+  // Handle window focus for immediate updates
+  useEffect(() => {
+    const handleFocus = () => {
+      // Reconnect SSE if needed when window gains focus
+      if (!isConnected && isPageVisible) {
+        window.location.reload() // Simple reconnection strategy
+      }
+    }
+
+    window.addEventListener('focus', handleFocus)
+    return () => window.removeEventListener('focus', handleFocus)
+  }, [isConnected, isPageVisible])
+
+  // Simple time update interval (low resource usage)
+  useEffect(() => {
     const timeInterval = setInterval(() => {
       setCurrentTime(new Date())
     }, 1000)
 
-    return () => {
-      clearInterval(statusInterval)
-      clearInterval(operationsInterval)
-      clearInterval(timeInterval)
-    }
-  }, [checkRecentOperations])
+    return () => clearInterval(timeInterval)
+  }, [])
+
+  // Initial data fetch
+  useEffect(() => {
+    fetchLaneStatus()
+  }, [])
 
   const fetchLaneStatus = async () => {
     try {
-      const response = await fetch('/api/queue/reservation')
+      const response = await fetch('/api/queue/reservation', {
+        cache: 'no-cache',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        }
+      })
       if (response.ok) {
         const data = await response.json()
         setLanes(data)
         setIsLoading(false)
+      } else {
+        console.warn('Failed to fetch lane status:', response.status)
       }
     } catch (error) {
       console.error('Error fetching lane status:', error)
-      setIsLoading(false)
+      // Don't set loading to false on error to keep trying
     }
   }
 
@@ -209,6 +284,16 @@ export default function DisplayPage() {
     })
   }
 
+  // Handle page visibility changes
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      setIsPageVisible(!document.hidden)
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }, [])
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-900 to-indigo-900 flex items-center justify-center p-4">
@@ -227,14 +312,14 @@ export default function DisplayPage() {
         <div className="max-w-7xl mx-auto px-4 py-3">
           <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-2xl font-bold">Queue Status Display</h1>
-              <p className="text-blue-200 text-sm">Real-time monitoring</p>
+              <h1 className="text-4xl font-bold">Queue Status Display</h1>
+              <p className="text-blue-200 text-lg">Real-time monitoring</p>
             </div>
             <div className="text-right">
-              <div className="text-xl font-mono font-bold">
+              <div className="text-3xl font-mono font-bold">
                 {formatTime(currentTime)}
               </div>
-              <div className="text-blue-200 text-sm">
+              <div className="text-blue-200 text-lg">
                 {formatDate(currentTime)}
               </div>
             </div>
@@ -245,9 +330,9 @@ export default function DisplayPage() {
       <div className="max-w-7xl mx-auto px-4 py-4">
         {lanes.length === 0 ? (
           <div className="text-center py-12">
-            <div className="text-6xl mb-4">🏢</div>
-            <h2 className="text-2xl font-bold mb-3">No Active Services</h2>
-            <p className="text-lg text-blue-200">All service lanes are currently closed</p>
+            <div className="text-8xl mb-6">🏢</div>
+            <h2 className="text-4xl font-bold mb-4">No Active Services</h2>
+            <p className="text-2xl text-blue-200">All service lanes are currently closed</p>
           </div>
         ) : (
           /* Responsive Grid - More Lanes Fit On Screen */
@@ -264,33 +349,33 @@ export default function DisplayPage() {
                   {/* Compact Lane Header */}
                   <div className="flex justify-between items-start mb-3">
                     <div>
-                      <h3 className="text-lg font-bold text-white mb-1">
+                      <h3 className="text-2xl font-bold text-white mb-1">
                         {lane.name}
                       </h3>
                       {lane.description && (
-                        <p className="text-blue-200 text-xs">
+                        <p className="text-blue-200 text-base">
                           {lane.description}
                         </p>
                       )}
                     </div>
-                    <Badge className="bg-green-500 text-white text-xs px-2 py-1">
+                    <Badge className="bg-green-500 text-white text-sm px-3 py-1">
                       OPEN
                     </Badge>
                   </div>
 
                   {/* Compact Current Number Display */}
-                  <div className={`bg-black bg-opacity-30 rounded-lg p-4 mb-4 text-center transition-all duration-1000 ${
+                  <div className={`bg-black bg-opacity-30 rounded-lg p-6 mb-4 text-center transition-all duration-1000 ${
                     recentlyUpdatedLanes.has(lane.id) ? 'ring-2 ring-yellow-400 ring-opacity-75 bg-yellow-400 bg-opacity-20' : ''
                   }`}>
-                    <div className="text-blue-200 text-xs mb-1">NOW SERVING</div>
-                    <div className={`text-4xl font-bold mb-1 font-mono transition-all duration-500 ${
+                    <div className="text-blue-200 text-base mb-2">NOW SERVING</div>
+                    <div className={`font-bold mb-2 font-mono transition-all duration-500 ${
                       recentlyUpdatedLanes.has(lane.id) ? 'text-yellow-300 animate-pulse' : 'text-yellow-400'
-                    }`}>
+                    }`} style={{ fontSize: '8rem', lineHeight: '1' }}>
                       {lane.currentNumber === 0 ? '---' : lane.currentNumber.toString().padStart(3, '0')}
                     </div>
                     {lane.currentNumber > 0 && (
                       <div className={`${recentlyUpdatedLanes.has(lane.id) ? 'animate-bounce' : 'animate-pulse'}`}>
-                        <div className="text-xs text-green-400">
+                        <div className="text-base text-green-400">
                           🔔 Please proceed to {lane.name}
                         </div>
                       </div>
@@ -299,29 +384,29 @@ export default function DisplayPage() {
 
                   {/* Compact Queue Statistics */}
                   <div className="grid grid-cols-3 gap-2 mb-3">
-                    <div className="bg-black bg-opacity-20 rounded p-2 text-center">
-                      <div className="text-lg font-bold text-green-400">
+                    <div className="bg-black bg-opacity-20 rounded p-3 text-center">
+                      <div className="text-2xl font-bold text-green-400">
                         {lane.lastServedNumber}
                       </div>
-                      <div className="text-blue-200 text-xs">
+                      <div className="text-blue-200 text-sm">
                         Last
                       </div>
                     </div>
                     
-                    <div className="bg-black bg-opacity-20 rounded p-2 text-center">
-                      <div className="text-lg font-bold text-orange-400">
+                    <div className="bg-black bg-opacity-20 rounded p-3 text-center">
+                      <div className="text-2xl font-bold text-orange-400">
                         {lane.waitingCount}
                       </div>
-                      <div className="text-blue-200 text-xs">
+                      <div className="text-blue-200 text-sm">
                         Waiting
                       </div>
                     </div>
                     
-                    <div className="bg-black bg-opacity-20 rounded p-2 text-center">
-                      <div className="text-lg font-bold text-purple-400">
+                    <div className="bg-black bg-opacity-20 rounded p-3 text-center">
+                      <div className="text-2xl font-bold text-purple-400">
                         {lane.nextNumber}
                       </div>
-                      <div className="text-blue-200 text-xs">
+                      <div className="text-blue-200 text-sm">
                         Next
                       </div>
                     </div>
@@ -329,13 +414,13 @@ export default function DisplayPage() {
 
                   {/* Compact Progress Bar */}
                   <div>
-                    <div className="flex justify-between text-xs text-blue-200 mb-1">
+                    <div className="flex justify-between text-sm text-blue-200 mb-2">
                       <span>Progress</span>
                       <span>{lane.waitingCount} waiting</span>
                     </div>
-                    <div className="w-full bg-black bg-opacity-30 rounded-full h-2">
+                    <div className="w-full bg-black bg-opacity-30 rounded-full h-3">
                       <div 
-                        className="bg-gradient-to-r from-green-400 to-blue-500 h-2 rounded-full transition-all duration-500"
+                        className="bg-gradient-to-r from-green-400 to-blue-500 h-3 rounded-full transition-all duration-500"
                         style={{ 
                           width: lane.nextNumber > 0 
                             ? `${Math.min((lane.currentNumber / lane.nextNumber) * 100, 100)}%` 
@@ -351,9 +436,9 @@ export default function DisplayPage() {
         )}
 
         {/* Compact Footer Notice */}
-        <div className="mt-4 text-center">
-          <div className="bg-black bg-opacity-20 backdrop-blur-sm rounded-lg p-3 max-w-4xl mx-auto">
-            <div className="flex flex-wrap justify-center gap-6 text-sm text-blue-200">
+        <div className="mt-6 text-center">
+          <div className="bg-black bg-opacity-20 backdrop-blur-sm rounded-lg p-4 max-w-4xl mx-auto">
+            <div className="flex flex-wrap justify-center gap-8 text-lg text-blue-200">
               <span>🔔 Listen for your number</span>
               <span>👀 Watch this screen</span>
               <span>❓ Missed call? Approach counter</span>
@@ -362,20 +447,24 @@ export default function DisplayPage() {
         </div>
       </div>
 
-      {/* Compact Live Updates Indicator */}
-      <div className="fixed bottom-3 right-3 bg-black bg-opacity-50 text-white px-3 py-2 rounded-lg">
+      {/* Connection Status Indicator */}
+      <div className="fixed bottom-3 right-3 bg-black bg-opacity-50 text-white px-4 py-3 rounded-lg">
         <div className="flex items-center">
-          <div className="animate-pulse w-2 h-2 bg-green-400 rounded-full mr-2"></div>
-          <span className="text-xs">Live</span>
+          <div className={`w-3 h-3 rounded-full mr-2 ${
+            isConnected ? 'bg-green-400 animate-pulse' : 'bg-red-400'
+          }`}></div>
+          <span className="text-sm">
+            {isConnected ? 'Live' : 'Reconnecting...'}
+          </span>
         </div>
       </div>
 
       {/* Compact Sound Notification */}
       {recentlyUpdatedLanes.size > 0 && (
-        <div className="fixed bottom-3 left-3 bg-yellow-500 bg-opacity-90 text-black px-4 py-2 rounded-lg animate-bounce">
+        <div className="fixed bottom-3 left-3 bg-yellow-500 bg-opacity-90 text-black px-6 py-3 rounded-lg animate-bounce">
           <div className="flex items-center">
-            <div className="text-lg mr-2">🔔</div>
-            <span className="font-bold text-sm">New Number!</span>
+            <div className="text-2xl mr-3">🔔</div>
+            <span className="font-bold text-lg">New Number!</span>
           </div>
         </div>
       )}
