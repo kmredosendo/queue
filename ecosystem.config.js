@@ -1,9 +1,9 @@
 module.exports = {
   apps: [
     {
-      name: 'queue',
+      name: 'queue-dev',
       script: 'npm',
-      args: 'start',
+      args: 'run dev',
       cwd: './',
       instances: 1,
       autorestart: true,

@@ -89,7 +89,7 @@ essentialItems.forEach(item => {
 // Create .env.example template
 console.log('🔧 Creating environment template...');
 const envExample = `# Database Configuration
-DATABASE_URL="mysql://username:password@localhost:3306/queue_system"
+DATABASE_URL="mysql://username:password@localhost:3306/queue"
 
 # JWT Secret for authentication (CHANGE IN PRODUCTION)
 JWT_SECRET="your-super-secret-jwt-key-change-in-production"
@@ -111,9 +111,8 @@ console.log('🔧 Creating PM2 configuration...');
 const ecosystemConfig = `// PM2 Configuration for Windows 11 Production
 module.exports = {
   apps: [{
-    name: 'queue-system',
-    script: 'npm',
-    args: 'start',
+    name: 'queue',
+    script: 'start-app-fixed.js',
     instances: 1,
     exec_mode: 'fork',
     autorestart: true,
@@ -135,6 +134,76 @@ module.exports = {
 
 fs.writeFileSync(path.join(productionDir, 'ecosystem.config.js'), ecosystemConfig);
 console.log('   ✅ ecosystem.config.js created');
+
+// Create Node.js wrapper for PM2/Windows compatibility
+console.log('🔧 Creating Node.js wrapper for PM2...');
+const startAppWrapper = `#!/usr/bin/env node
+
+/**
+ * Node.js wrapper for starting Next.js with PM2 on Windows
+ * Handles shell compatibility and proper process management
+ */
+
+const { spawn } = require('child_process');
+const path = require('path');
+const os = require('os');
+
+console.log('Starting Queue Management System...');
+console.log('Platform:', os.platform());
+console.log('Architecture:', os.arch());
+console.log('Node version:', process.version);
+console.log('Working directory:', process.cwd());
+
+// Determine the correct npm command for Windows
+const isWindows = process.platform === 'win32';
+const npmCommand = isWindows ? 'npm.cmd' : 'npm';
+
+console.log('Using npm command:', npmCommand);
+
+// Spawn npm start with proper options for Windows
+const child = spawn(npmCommand, ['start'], {
+  stdio: ['pipe', 'pipe', 'pipe'],
+  shell: isWindows,
+  env: {
+    ...process.env,
+    NODE_ENV: 'production',
+    PORT: process.env.PORT || '3000'
+  },
+  cwd: process.cwd()
+});
+
+// Forward stdout
+child.stdout.on('data', (data) => {
+  process.stdout.write(data);
+});
+
+// Forward stderr
+child.stderr.on('data', (data) => {
+  process.stderr.write(data);
+});
+
+// Handle child process exit
+child.on('exit', (code, signal) => {
+  console.log(\`Child process exited with code \${code} and signal \${signal}\`);
+  process.exit(code || 0);
+});
+
+// Handle process termination
+process.on('SIGTERM', () => {
+  console.log('Received SIGTERM, terminating child process...');
+  child.kill('SIGTERM');
+});
+
+process.on('SIGINT', () => {
+  console.log('Received SIGINT, terminating child process...');
+  child.kill('SIGINT');
+});
+
+console.log('Next.js application starting...');
+`;
+
+fs.writeFileSync(path.join(productionDir, 'start-app-fixed.js'), startAppWrapper);
+console.log('   ✅ start-app-fixed.js created');
 
 // Create deployment script
 console.log('🔧 Creating deployment script...');
