@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getCurrentUser, hasRole } from '@/lib/auth'
 import { UserRole, QueueItemStatus } from '@prisma/client'
-import { broadcastQueueUpdate } from '../events/route'
+import { broadcastQueueUpdate } from '@/lib/broadcast'
 
 export async function POST(request: NextRequest) {
   try {

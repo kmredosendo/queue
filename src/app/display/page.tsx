@@ -4,19 +4,6 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 
-interface QueueOperation {
-  id: string
-  action: string
-  laneId: string
-  number: number | null
-  createdAt: string
-  lane: {
-    id: string
-    name: string
-    currentNumber: number
-  }
-}
-
 interface LaneStatus {
   id: string
   name: string
@@ -42,7 +29,6 @@ export default function DisplayPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [previousLanes, setPreviousLanes] = useState<LaneStatus[]>([])
   const [recentlyUpdatedLanes, setRecentlyUpdatedLanes] = useState<Set<string>>(new Set())
-  const [lastOperationCheck, setLastOperationCheck] = useState(new Date())
   const [isPageVisible, setIsPageVisible] = useState(true)
   const [isConnected, setIsConnected] = useState(false)
   const [connectionRetries, setConnectionRetries] = useState(0)
@@ -121,7 +107,40 @@ export default function DisplayPage() {
     setPreviousLanes(lanes)
   }, [lanes, previousLanes])
 
-  // Check for recent queue operations (CALL and BUZZ)
+  const fetchLaneStatus = useCallback(async () => {
+    try {
+      const response = await fetch('/api/queue/reservation', {
+        cache: 'no-cache',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        }
+      })
+      if (response.ok) {
+        const data = await response.json()
+        setLanes(data)
+        setIsLoading(false)
+      } else {
+        console.warn('Failed to fetch lane status:', response.status)
+      }
+    } catch (error) {
+      console.error('Error fetching lane status:', error)
+      // Don't set loading to false on error to keep trying
+    }
+  }, [])
+
+  // Fallback polling for when SSE fails
+  const startFallbackPolling = useCallback(() => {
+    console.log('Starting fallback polling mode')
+    const interval = setInterval(() => {
+      if (isPageVisible) {
+        fetchLaneStatus()
+      }
+    }, 2000) // Reasonable fallback interval
+
+    return () => clearInterval(interval)
+  }, [isPageVisible, fetchLaneStatus])
+
   // Server-Sent Events connection for real-time updates
   useEffect(() => {
     if (!isPageVisible) return // Don't connect when page is hidden
@@ -203,19 +222,7 @@ export default function DisplayPage() {
         eventSourceRef.current = null
       }
     }
-  }, [isPageVisible])
-
-  // Fallback polling for when SSE fails
-  const startFallbackPolling = () => {
-    console.log('Starting fallback polling mode')
-    const interval = setInterval(() => {
-      if (isPageVisible) {
-        fetchLaneStatus()
-      }
-    }, 2000) // Reasonable fallback interval
-
-    return () => clearInterval(interval)
-  }
+  }, [isPageVisible, connectionRetries, startFallbackPolling])
 
   // Handle window focus for immediate updates
   useEffect(() => {
@@ -242,29 +249,7 @@ export default function DisplayPage() {
   // Initial data fetch
   useEffect(() => {
     fetchLaneStatus()
-  }, [])
-
-  const fetchLaneStatus = async () => {
-    try {
-      const response = await fetch('/api/queue/reservation', {
-        cache: 'no-cache',
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache'
-        }
-      })
-      if (response.ok) {
-        const data = await response.json()
-        setLanes(data)
-        setIsLoading(false)
-      } else {
-        console.warn('Failed to fetch lane status:', response.status)
-      }
-    } catch (error) {
-      console.error('Error fetching lane status:', error)
-      // Don't set loading to false on error to keep trying
-    }
-  }
+  }, [fetchLaneStatus])
 
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString('en-US', {

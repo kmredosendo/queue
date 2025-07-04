@@ -25,7 +25,6 @@ import {
   PowerOff, 
   Trash2, 
   X,
-  Save,
   Check
 } from 'lucide-react'
 
@@ -891,7 +890,7 @@ export default function AdminDashboard() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Lane</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete lane "{laneToDelete?.name}"? 
+              Are you sure you want to delete lane &ldquo;{laneToDelete?.name}&rdquo;? 
               This action cannot be undone and will remove all associated data.
             </AlertDialogDescription>
           </AlertDialogHeader>
