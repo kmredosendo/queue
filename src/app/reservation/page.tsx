@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { toast } from 'sonner'
 
 interface LaneStatus {
@@ -30,8 +29,6 @@ export default function ReservationPage() {
   const [lanes, setLanes] = useState<LaneStatus[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isGettingNumber, setIsGettingNumber] = useState(false)
-  const [showTicket, setShowTicket] = useState(false)
-  const [currentTicket, setCurrentTicket] = useState<QueueTicket | null>(null)
 
   useEffect(() => {
     fetchLaneStatus()
@@ -57,6 +54,50 @@ export default function ReservationPage() {
     }
   }
 
+  const printTicket = async (ticketData: QueueTicket) => {
+    try {
+      console.log('🖨️ Attempting to print ticket:', ticketData)
+      const currentTime = new Date()
+      const timestamp = currentTime.toLocaleString('en-US', {
+        month: '2-digit',
+        day: '2-digit',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      })
+
+      const response = await fetch('/api/print/ticket', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          queueNumber: ticketData.queueNumber,
+          laneName: ticketData.laneName,
+          currentNumber: ticketData.currentNumber,
+          timestamp: timestamp
+        }),
+      })
+
+      if (response.ok) {
+        console.log('✅ Print request successful')
+        toast.success('Physical ticket printed successfully!')
+      } else {
+        const errorData = await response.json()
+        console.error('❌ Print request failed:', errorData)
+        if (response.status === 404) {
+          toast.error('Printer not connected. Please check EPSON TM-T88IV connection.')
+        } else {
+          toast.error(`Printing failed: ${errorData.details || errorData.error}`)
+        }
+      }
+    } catch (error) {
+      console.error('💥 Print error:', error)
+      toast.error('Failed to print ticket. Please check printer connection.')
+    }
+  }
+
   const getQueueNumber = async (laneId: string) => {
     setIsGettingNumber(true)
     try {
@@ -70,11 +111,12 @@ export default function ReservationPage() {
 
       if (response.ok) {
         const data = await response.json()
-        setCurrentTicket(data)
-        setShowTicket(true)
+        
+        // Print ticket silently
+        await printTicket(data)
         
         // Show success message
-        toast.success(`Queue number ${data.queueNumber} assigned for ${data.laneName}`)
+        toast.success(`Queue number ${data.queueNumber} assigned for ${data.laneName}! Ticket printing...`)
         
         fetchLaneStatus() // Refresh status
       } else {
@@ -138,6 +180,7 @@ export default function ReservationPage() {
             <Card 
               key={lane.id}
               className="hover:shadow-lg transition-all duration-200 hover:scale-[1.02] cursor-pointer border-2"
+              onClick={() => getQueueNumber(lane.id)}
             >
               <CardHeader className="pb-2 pt-3 px-3">
                 <div className="flex items-center justify-between">
@@ -187,7 +230,10 @@ export default function ReservationPage() {
 
                 {/* Compact Get Number Button */}
                 <Button
-                  onClick={() => getQueueNumber(lane.id)}
+                  onClick={(e) => {
+                    e.stopPropagation() // Prevent card click
+                    getQueueNumber(lane.id)
+                  }}
                   disabled={isGettingNumber}
                   className="w-full h-10 text-sm font-medium"
                 >
@@ -236,65 +282,6 @@ export default function ReservationPage() {
           </CardContent>
         </Card>
       </div>
-
-      {/* Queue Ticket Modal */}
-      <Dialog open={showTicket} onOpenChange={setShowTicket}>
-        <DialogContent className="max-w-md print:shadow-none print:border-0">
-          <DialogHeader>
-            <DialogTitle className="text-center text-2xl">Queue Ticket</DialogTitle>
-            <DialogDescription className="text-center">
-              Please keep this ticket until your number is called
-            </DialogDescription>
-          </DialogHeader>
-          
-          {currentTicket && (
-            <div className="space-y-6 print:text-black">
-              {/* Ticket Content */}
-              <div className="text-center border-2 border-dashed border-gray-300 rounded-lg p-6 print:border-black">
-                <div className="text-sm text-gray-600 mb-2 print:text-black">
-                  {new Date().toLocaleDateString()} {new Date().toLocaleTimeString()}
-                </div>
-                
-                <div className="text-6xl font-bold text-blue-600 mb-2 print:text-black">
-                  {currentTicket.queueNumber}
-                </div>
-                
-                <div className="text-xl font-semibold text-gray-900 mb-4">
-                  {currentTicket.laneName}
-                </div>
-                
-                <div className="space-y-2 text-sm text-gray-600 print:text-black">
-                  <div className="flex justify-between">
-                    <span>Now Serving:</span>
-                    <span className="font-medium">{currentTicket.currentNumber || '-'}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>People Ahead:</span>
-                    <span className="font-medium">{currentTicket.waitingCount}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Estimated Wait:</span>
-                    <span className="font-medium">{formatEstimatedWait(currentTicket.estimatedWait)}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Instructions */}
-              <div className="text-xs text-gray-500 text-center space-y-1 print:text-black">
-                <p>Please listen for your number or watch the display screen</p>
-                <p>If you miss your call, please approach the service counter</p>
-              </div>
-
-              {/* Actions */}
-              <div className="flex gap-3 print:hidden">
-                <Button onClick={() => setShowTicket(false)} className="flex-1">
-                  Done
-                </Button>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }

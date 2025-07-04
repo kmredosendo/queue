@@ -48,3 +48,9 @@ next-env.d.ts
 # OS
 Thumbs.db
 .DS_Store
+
+# Printer artifacts
+ESDPRT001
+EPSON*
+test-print*.ps1
+*.prn
