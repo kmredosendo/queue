@@ -1,6 +1,6 @@
 # Queue Management System
 
-A modern, full-featured queueing system for multi-lane service environments. Built with Next.js 15, TypeScript, Tailwind CSS, shadcn/ui, and MySQL (Prisma ORM).
+A comprehensive, production-ready queueing system for multi-lane service environments. Built with Next.js 15, TypeScript, Tailwind CSS, shadcn/ui, and MySQL (Prisma ORM).
 
 ---
 
@@ -14,12 +14,14 @@ A modern, full-featured queueing system for multi-lane service environments. Bui
 
 ### Core Functions
 - **Admin Dashboard**: Manage lanes, users, assignments, and view live stats
-- **Queue Operations**: Advance, call, buzz, and serve queue numbers (per lane, per day)
+- **Queue Operations**: Advance, call, buzz, and serve queue numbers (per lane, per day, with daily reset)
 - **Reservation System**: Customers select a lane, get a queue number, and see estimated wait
 - **Display System**: Shows all active lanes, current/next numbers, and queue status in real time
 - **Role-based Authentication**: Custom, secure, no third-party providers
 - **Daily Reset**: Queue numbers and stats are always based on today’s operations only
 - **Responsive UI**: Built with shadcn/ui and Tailwind CSS for a modern, accessible experience
+- **Physical Ticket Printing**: Print queue tickets for customers (if printer is connected)
+- **Real-Time Updates**: All interfaces update automatically for live queue status
 
 ### Tech Stack
 - **Frontend**: Next.js 15 (App Router), TypeScript, Tailwind CSS, shadcn/ui
@@ -71,8 +73,8 @@ npm run build:production
 - **Cashier 2**: c2 / 123
 
 ## 🏢 Demo Lanes (Default Seed)
-- **Regular Lane**
-- **PWD Lane**
+- **Regular Lane**: General queue for all customers
+- **PWD Lane**: Priority for PWDs and Senior Citizens
 
 ---
 
