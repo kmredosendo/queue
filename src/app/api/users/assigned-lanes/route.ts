@@ -10,12 +10,17 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Get all user's assigned lanes with queue details
+    // Get today's date range (start and end of day)
+    const today = new Date()
+    const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+    const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1)
+
+    // Get all user's assigned lanes with queue details (today only)
     const assignedLanes = await prisma.laneUser.findMany({
       where: {
         userId: currentUser.id,
         lane: {
-          isActive: true  // Only active lanes
+          isActive: true
         }
       },
       include: {
@@ -23,8 +28,9 @@ export async function GET(request: NextRequest) {
           include: {
             queueItems: {
               where: {
-                status: {
-                  in: ['WAITING', 'CALLED']
+                createdAt: {
+                  gte: startOfDay,
+                  lt: endOfDay
                 }
               },
               orderBy: {
@@ -36,24 +42,34 @@ export async function GET(request: NextRequest) {
       },
       orderBy: {
         lane: {
-          type: 'asc' // Regular lanes first, then PWD_SENIOR
+          type: 'asc'
         }
       }
     })
 
-    // Transform the data to match the Lane interface
-    const lanes = assignedLanes.map(assignment => ({
-      id: assignment.lane.id,
-      name: assignment.lane.name,
-      description: assignment.lane.description,
-      type: assignment.lane.type,
-      currentNumber: assignment.lane.currentNumber,
-      lastServedNumber: assignment.lane.lastServedNumber,
-      queueItems: assignment.lane.queueItems.map((item: { number: number; status: string }) => ({
-        number: item.number,
-        status: item.status
-      }))
-    }))
+    // Transform the data to match the Lane interface, computing numbers from today's queue items
+    const lanes = assignedLanes.map(assignment => {
+      const queueItems = assignment.lane.queueItems
+      const calledItems = queueItems.filter(item => item.status === 'CALLED')
+      // currentNumber: highest CALLED number today, or 0 if none
+      const calledNumbers = calledItems.map(item => item.number)
+      const currentNumber = calledNumbers.length > 0 ? Math.max(...calledNumbers) : 0
+      // lastServedNumber: highest number today with any status except WAITING, or 0 if none
+      const nonWaitingNumbers = queueItems.filter(item => item.status !== 'WAITING').map(item => item.number)
+      const lastServedNumber = nonWaitingNumbers.length > 0 ? Math.max(...nonWaitingNumbers) : 0
+      return {
+        id: assignment.lane.id,
+        name: assignment.lane.name,
+        description: assignment.lane.description,
+        type: assignment.lane.type,
+        currentNumber,
+        lastServedNumber,
+        queueItems: queueItems.map((item: { number: number; status: string }) => ({
+          number: item.number,
+          status: item.status
+        }))
+      }
+    })
 
     return NextResponse.json(lanes)
   } catch (error) {

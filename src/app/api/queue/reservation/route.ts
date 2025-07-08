@@ -103,13 +103,8 @@ export async function GET() {
         id: true,
         name: true,
         description: true,
-        currentNumber: true,
-        lastServedNumber: true,
         queueItems: {
           where: {
-            status: {
-              in: [QueueItemStatus.WAITING, QueueItemStatus.CALLED]
-            },
             createdAt: {
               gte: startOfDay,
               lt: endOfDay
@@ -130,14 +125,19 @@ export async function GET() {
     })
 
     const laneStatus = lanes.map(lane => {
+      // Only consider today's queue items
       const waitingItems = lane.queueItems.filter(item => item.status === QueueItemStatus.WAITING)
       const calledItems = lane.queueItems.filter(item => item.status === QueueItemStatus.CALLED)
-      
+      const allNumbers = lane.queueItems.map(item => item.number)
+      // currentNumber: highest CALLED number today, or 0 if none
+      const calledNumbers = lane.queueItems.filter(item => item.status === QueueItemStatus.CALLED).map(item => item.number)
+      const currentNumber = calledNumbers.length > 0 ? Math.max(...calledNumbers) : 0
+      // lastServedNumber: highest number today with any status except WAITING, or 0 if none
+      const nonWaitingNumbers = lane.queueItems.filter(item => item.status !== QueueItemStatus.WAITING).map(item => item.number)
+      const lastServedNumber = nonWaitingNumbers.length > 0 ? Math.max(...nonWaitingNumbers) : 0
       // Calculate next number with simple cycling (1-999, then back to 1)
-      const maxNumberToday = Math.max(...lane.queueItems.map(item => item.number), 0)
+      const maxNumberToday = allNumbers.length > 0 ? Math.max(...allNumbers) : 0
       let nextNumber = maxNumberToday + 1
-      
-      // If we would exceed 999, cycle back to 1
       if (nextNumber > 999) {
         nextNumber = 1
       }
@@ -146,11 +146,11 @@ export async function GET() {
         id: lane.id,
         name: lane.name,
         description: lane.description,
-        currentNumber: lane.currentNumber,
-        lastServedNumber: lane.lastServedNumber,
+        currentNumber,
+        lastServedNumber,
         waitingCount: waitingItems.length,
         calledCount: calledItems.length,
-        nextNumber: nextNumber
+        nextNumber
       }
     })
 
