@@ -1,219 +1,139 @@
 # Queue Management System
 
-A comprehensive queueing system built with Next.js, TypeScript, Tailwind CSS, shadcn/ui, and MySQL. The system provides efficient queue management for better customer service across multiple service lanes.
+A modern, full-featured queueing system for multi-lane service environments. Built with Next.js 15, TypeScript, Tailwind CSS, shadcn/ui, and MySQL (Prisma ORM).
 
-## Features
+---
 
-### 🔐 Authentication System
-- **Admin**: Full access to admin dashboard for managing users and lanes
-- **User**: Cashier/office personnel interface for queue operations  
-- **Display**: Display screen interface showing current queue status
-- **Reservation**: Customer reservation interface for getting queue numbers
+## 🚀 Features
 
-### 📊 Admin Dashboard
-- Manage service lanes/offices
-- Create and manage users with different roles
-- Assign users to specific lanes
-- View real-time statistics and queue status
+### User Roles
+- **Admin**: Full dashboard access, manage users and lanes
+- **User (Cashier/Staff)**: Queue operations for assigned lanes (Next, Call, Buzz, Serve)
+- **Display**: Real-time display of all active lanes and queue status
+- **Reservation**: Customer-facing interface to get queue numbers and wait times
 
-### 👨‍💼 User Interface (Cashiers)
-- Next number button to advance queue
-- Call current number again
-- Buzz current number for attention
-- Display number of people waiting
-- Serve current customer
+### Core Functions
+- **Admin Dashboard**: Manage lanes, users, assignments, and view live stats
+- **Queue Operations**: Advance, call, buzz, and serve queue numbers (per lane, per day)
+- **Reservation System**: Customers select a lane, get a queue number, and see estimated wait
+- **Display System**: Shows all active lanes, current/next numbers, and queue status in real time
+- **Role-based Authentication**: Custom, secure, no third-party providers
+- **Daily Reset**: Queue numbers and stats are always based on today’s operations only
+- **Responsive UI**: Built with shadcn/ui and Tailwind CSS for a modern, accessible experience
 
-### 📱 Reservation System
-- Select service lane/office
-- Get queue number with estimated wait time
-- Print-friendly queue ticket
+### Tech Stack
+- **Frontend**: Next.js 15 (App Router), TypeScript, Tailwind CSS, shadcn/ui
+- **Backend**: Next.js API routes, Prisma ORM
+- **Database**: MySQL
+- **Authentication**: Custom JWT-based
 
-### 📺 Display System
-- Shows all active lanes/offices
-- Displays current serving number
-- Real-time queue status updates
+---
 
-## Tech Stack
-
-- **Frontend**: Next.js 15, TypeScript, Tailwind CSS, shadcn/ui
-- **Backend**: Next.js API Routes
-- **Database**: MySQL with Prisma ORM
-- **Authentication**: Custom JWT-based authentication
-- **UI Components**: shadcn/ui with Radix UI primitives
-
-## Getting Started
+## 🛠️ Getting Started
 
 ### Prerequisites
-- Node.js 18+ 
-- MySQL database
-- npm or yarn
+- Node.js 18+
+- MySQL
 
 ### Installation
+```bash
+git clone <repo-url>
+cd queue
+npm install
+```
 
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd queue
-   ```
+### Environment Setup
+Copy `.env.example` to `.env` and update DB credentials and secrets.
 
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
+### Database Setup
+```bash
+npm run db:generate
+npm run db:push
+npm run db:seed
+```
 
-3. **Set up environment variables**
-   
-   Copy the `.env` file and update with your database credentials:
-   ```bash
-   # Database - Update with your MySQL credentials
-   DATABASE_URL="mysql://root:password@localhost:3306/queue_system"
-   
-   # JWT Secret for authentication
-   JWT_SECRET="your-super-secret-jwt-key-change-in-production"
-   
-   # Next.js
-   NEXTAUTH_URL="http://localhost:3000"
-   NEXTAUTH_SECRET="your-nextauth-secret-change-in-production"
-   ```
+### Development
+```bash
+npm run dev
+```
 
-4. **Set up the database**
-   ```bash
-   # Generate Prisma client
-   npm run db:generate
-   
-   # Push database schema
-   npm run db:push
-   
-   # Seed with initial data
-   npm run db:seed
-   ```
+### Production Build
+```bash
+npm run build
+npm run build:production
+```
 
-5. **Start the development server**
-   ```bash
-   npm run dev
-   ```
+---
 
-6. **Open your browser**
-   
-   Navigate to [http://localhost:3000](http://localhost:3000)
+## 🧑‍💻 Demo Users (Default Seed)
+- **Admin**: admin / admin123
+- **Cashier 1**: c1 / 123
+- **Cashier 2**: c2 / 123
 
-## Demo Credentials
+## 🏢 Demo Lanes (Default Seed)
+- **Regular Lane**
+- **PWD Lane**
 
-### Admin Access
-- **Username**: admin
-- **Password**: admin123
+---
 
-### Cashier Access  
-- **Username**: cashier
-- **Password**: cashier123
-
-### Display Access
-- **Username**: display  
-- **Password**: display123
-
-### Reservation Access
-- **Username**: reservation
-- **Password**: reservation123
-
-## Usage
-
-### For Administrators
-1. Login with admin credentials
-2. Navigate to Admin Dashboard
-3. Create new lanes/offices as needed
-4. Add users and assign them to specific lanes
-5. Monitor real-time queue statistics
-
-### For Cashiers/Staff
-1. Login with user credentials
-2. Select your assigned lane
-3. Use queue controls:
-   - **Next**: Advance to next number
-   - **Call**: Re-announce current number
-   - **Buzz**: Send alert for current number
-   - **Serve**: Mark current customer as served
-
-### For Customers (Reservation)
-1. Access reservation interface (no login required)
-2. Select desired service lane
-3. Get queue number and estimated wait time
-4. Wait for your number to be called
-
-### For Display Screens
-1. Login with display credentials
-2. Screen shows all active lanes
-3. Real-time updates of current serving numbers
-4. Queue status for each lane
-
-## API Endpoints
-
-### Authentication
-- `POST /api/auth/login` - User login
-- `POST /api/auth/logout` - User logout
-
-### Users Management
-- `GET /api/users` - Get all users (Admin only)
-- `POST /api/users` - Create new user (Admin only)
-
-### Lanes Management  
-- `GET /api/lanes` - Get all lanes
-- `POST /api/lanes` - Create new lane (Admin only)
-
-### Queue Operations
-- `POST /api/queue/operations` - Perform queue operations (Next, Call, Buzz, Serve)
-- `POST /api/queue/reservation` - Get new queue number
-- `GET /api/queue/reservation` - Get current queue status
-
-## Database Schema
-
-The system uses the following main entities:
-- **Users**: System users with different roles
-- **Lanes**: Service lanes/offices  
-- **LaneUser**: User-lane assignments
-- **QueueItem**: Individual queue entries
-- **QueueOperation**: Log of queue operations
-
-## Development
-
-### Available Scripts
-- `npm run dev` - Start development server
-- `npm run build` - Build for production
-- `npm run start` - Start production server
-- `npm run lint` - Run ESLint
-- `npm run db:generate` - Generate Prisma client
-- `npm run db:push` - Push schema to database
-- `npm run db:migrate` - Run database migrations
-- `npm run db:seed` - Seed database with sample data
-
-### Project Structure
+## 🗂️ Project Structure
 ```
 src/
-├── app/                 # Next.js 13+ app directory
-│   ├── admin/          # Admin dashboard pages
-│   ├── user/           # Cashier interface pages  
-│   ├── display/        # Display screen pages
-│   ├── reservation/    # Customer reservation pages
-│   └── api/            # API routes
-├── components/         # React components
-│   └── ui/            # shadcn/ui components
-└── lib/               # Utility libraries
-    ├── auth.ts        # Authentication utilities
-    ├── prisma.ts      # Prisma client
-    └── utils.ts       # General utilities
+  app/
+    admin/         # Admin dashboard
+    user/          # Cashier interface
+    display/       # Display screens
+    reservation/   # Customer reservation
+    api/           # API routes
+  components/
+    ui/            # shadcn/ui components
+  lib/             # Auth, Prisma, utils
+prisma/            # Prisma schema & migrations
+public/            # Static assets
+scripts/           # Seed and utility scripts
 ```
 
-## Contributing
+---
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test thoroughly
-5. Submit a pull request
+## 🔗 Key API Endpoints
+- `POST /api/auth/login` — Login
+- `POST /api/auth/logout` — Logout
+- `GET /api/lanes` — List all lanes (today's stats)
+- `GET /api/queue/reservation` — Lane status for reservation (today only)
+- `POST /api/queue/reservation` — Get a new queue number
+- `POST /api/queue/operations` — Queue actions (Next, Call, Buzz, Serve)
+- `GET /api/users/assigned-lanes` — Lanes assigned to current user (today only)
 
-## License
+---
 
-This project is licensed under the MIT License.
+## 📝 Development Scripts
+- `npm run dev` — Start dev server
+- `npm run build` — Build for production
+- `npm run build:production` — Create deployable package
+- `npm run db:generate` — Generate Prisma client
+- `npm run db:push` — Push schema to DB
+- `npm run db:seed` — Seed DB with demo data
 
-## Support
+---
 
-For support and questions, please open an issue in the repository.
+## 🏗️ Database Entities
+- **User**: System users (admin, cashier, etc.)
+- **Lane**: Service lanes (regular, PWD, etc.)
+- **LaneUser**: Assignment of users to lanes
+- **QueueItem**: Queue entries (per lane, per day)
+
+---
+
+## 📦 Production Deployment
+1. Run `npm run build:production` (see `production/` folder)
+2. Copy `production/` to your server
+3. Run `deploy.bat` as Administrator
+
+---
+
+## 📄 License
+MIT
+
+---
+
+For questions or support, open an issue in this repository.
