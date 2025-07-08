@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -26,6 +26,9 @@ export default function UserPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isOperating, setIsOperating] = useState<{[key: number]: boolean}>({})
   const router = useRouter()
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const eventSourceRef = useRef<EventSource | null>(null)
+  const [previousLanes, setPreviousLanes] = useState<Lane[]>([])
 
   const fetchLanes = useCallback(async () => {
     try {
@@ -120,6 +123,68 @@ export default function UserPage() {
   const getCalledCount = (lane: Lane) => {
     return lane.queueItems.filter(item => item.status === 'CALLED').length
   }
+
+  // Notification sound logic (Web Audio API)
+  useEffect(() => {
+    audioRef.current = new Audio()
+    audioRef.current.volume = 0.8
+    // Create notification sound using Web Audio API
+    const playNotification = () => {
+      const audioContext = new (window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext!)
+      const frequencies = [800, 1000, 1200]
+      frequencies.forEach((freq, index) => {
+        setTimeout(() => {
+          const osc = audioContext.createOscillator()
+          const gain = audioContext.createGain()
+          osc.connect(gain)
+          gain.connect(audioContext.destination)
+          osc.frequency.setValueAtTime(freq, audioContext.currentTime)
+          gain.gain.setValueAtTime(0.3, audioContext.currentTime)
+          gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5)
+          osc.start(audioContext.currentTime)
+          osc.stop(audioContext.currentTime + 0.5)
+        }, index * 200)
+      })
+    }
+    (audioRef.current as HTMLAudioElement & { playNotification?: () => void }).playNotification = playNotification
+  }, [])
+
+  // SSE event listening for queue updates
+  useEffect(() => {
+    eventSourceRef.current = new EventSource('/api/queue/events')
+    eventSourceRef.current.onmessage = (event: MessageEvent) => {
+      try {
+        const data = JSON.parse(event.data)
+        if (data && data.type === 'operation') {
+          fetchLanes()
+        }
+      } catch {}
+    }
+    return () => {
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close()
+        eventSourceRef.current = null
+      }
+    }
+  }, [fetchLanes])
+
+  // Play notification when current number changes
+  useEffect(() => {
+    if (previousLanes.length > 0 && lanes.length > 0) {
+      lanes.forEach((currentLane) => {
+        const previousLane = previousLanes.find(pl => pl.id === currentLane.id)
+        if (previousLane && previousLane.currentNumber !== currentLane.currentNumber && currentLane.currentNumber > 0) {
+          const audio = audioRef.current as HTMLAudioElement & { playNotification?: () => void }
+          if (audio && audio.playNotification) {
+            setTimeout(() => {
+              audio.playNotification!()
+            }, 100)
+          }
+        }
+      })
+    }
+    setPreviousLanes(lanes)
+  }, [lanes, previousLanes])
 
   if (isLoading) {
     return (
