@@ -138,4 +138,16 @@ MIT
 
 ---
 
+## ❤️ Support This Project
+
+If you find this project useful, consider supporting me:
+
+- 💖 [GitHub Sponsors](https://github.com/sponsors/kmredosendo)
+- ☕ [Buy Me a Coffee](https://buymeacoffee.com/arbitex)
+- 🎁 [Ko-fi](https://ko-fi.com/arbitex)
+
+Your support keeps this project alive and maintained!
+
+---
+
 For questions or support, open an issue in this repository.
