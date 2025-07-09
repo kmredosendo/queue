@@ -25,13 +25,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Get today's date range (start and end of day)
-    const today = new Date()
-    const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate())
-    const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1)
+    const today = new Date();
+    const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
 
-    // Get the highest queue number from today only
+    // Find the highest queue number for today for this lane
     const lastQueueItemToday = await prisma.queueItem.findFirst({
-      where: { 
+      where: {
         laneId,
         createdAt: {
           gte: startOfDay,
@@ -39,27 +39,44 @@ export async function POST(request: NextRequest) {
         }
       },
       orderBy: { number: 'desc' }
-    })
+    });
 
-    // Calculate next number with daily reset and 999 max limit (simple cycling)
-    let nextNumber = 1
+    // Calculate next number with daily reset and 999 max limit (wraps to 1)
+    let nextNumber = 1;
     if (lastQueueItemToday) {
       if (lastQueueItemToday.number >= 999) {
-        // After 999, cycle back to 1
-        nextNumber = 1
+        nextNumber = 1;
       } else {
-        nextNumber = lastQueueItemToday.number + 1
+        nextNumber = lastQueueItemToday.number + 1;
       }
     }
 
-    // Create queue item
-    await prisma.queueItem.create({
-      data: {
-        laneId,
-        number: nextNumber,
-        status: QueueItemStatus.WAITING
+    // Ensure the next number is not already used for today (handle rare race conditions)
+    let attempts = 0;
+    let createdItem = null;
+    while (attempts < 999) {
+      try {
+        createdItem = await prisma.queueItem.create({
+          data: {
+            laneId,
+            number: nextNumber,
+            status: QueueItemStatus.WAITING
+          }
+        });
+        break; // Success
+      } catch (error: any) {
+        if (error.code === 'P2002') {
+          // Unique constraint failed, try next number
+          nextNumber = nextNumber >= 999 ? 1 : nextNumber + 1;
+          attempts++;
+        } else {
+          throw error;
+        }
       }
-    })
+    }
+    if (!createdItem) {
+      return NextResponse.json({ error: 'All queue numbers for today are in use. Please contact admin.' }, { status: 400 });
+    }
 
     // Calculate waiting count (people ahead of this person in today's queue)
     const waitingCount = await prisma.queueItem.count({
