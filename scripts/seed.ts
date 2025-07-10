@@ -21,12 +21,12 @@ async function main() {
   console.log('✅ Created admin user:', admin.username)
 
   // Create cashier user
-  const cashierPassword = await bcrypt.hash('cashier123', 12)
+  const cashierPassword = await bcrypt.hash('123', 12)
   const cashier = await prisma.user.upsert({
-    where: { username: 'cashier1' },
+    where: { username: 'c1' },
     update: {},
     create: {
-      username: 'cashier1',
+      username: 'c1',
       password: cashierPassword,
       name: 'Cashier One',
       role: UserRole.USER,
@@ -35,12 +35,12 @@ async function main() {
   console.log('✅ Created cashier user:', cashier.username)
 
   // Create second cashier user
-  const cashier2Password = await bcrypt.hash('cashier123', 12)
+  const cashier2Password = await bcrypt.hash('123', 12)
   const cashier2 = await prisma.user.upsert({
-    where: { username: 'cashier2' },
+    where: { username: 'c2' },
     update: {},
     create: {
-      username: 'cashier2',
+      username: 'c2',
       password: cashier2Password,
       name: 'Cashier Two',
       role: UserRole.USER,
@@ -73,7 +73,7 @@ async function main() {
     data: {
       name: 'PWD/Senior Citizens',
       description: 'Priority lane for PWDs and Senior Citizens',
-      type: LaneType.PWD_SENIOR,
+      type: LaneType.PRIORITY,
       isActive: true,
     },
   })

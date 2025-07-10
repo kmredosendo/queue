@@ -107,6 +107,7 @@ export default function DisplayPage() {
     setPreviousLanes(lanes)
   }, [lanes, previousLanes])
 
+  // Refactored: fetchLaneStatus as a stable useCallback for correct useEffect deps
   const fetchLaneStatus = useCallback(async () => {
     try {
       const response = await fetch('/api/queue/reservation', {
@@ -246,7 +247,6 @@ export default function DisplayPage() {
     return () => clearInterval(timeInterval)
   }, [])
 
-  // Initial data fetch
   useEffect(() => {
     fetchLaneStatus()
   }, [fetchLaneStatus])

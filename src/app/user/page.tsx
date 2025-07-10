@@ -246,10 +246,10 @@ export default function UserPage() {
                       <div className="flex items-center gap-2">
                         <CardTitle className="text-lg">{lane.name}</CardTitle>
                         <Badge 
-                          variant={lane.type === 'PWD_SENIOR' ? 'secondary' : 'outline'}
-                          className="text-xs"
+                          variant={lane.type === 'PRIORITY' ? 'secondary' : 'outline'}
+                          className={`text-xs font-semibold px-2.5 py-0.5 rounded-full border border-border ${lane.type === 'PRIORITY' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}`}
                         >
-                          {lane.type === 'PWD_SENIOR' ? 'PWD/Senior' : 'Regular'}
+                          {lane.type === 'PRIORITY' ? 'Priority' : 'Regular'}
                         </Badge>
                       </div>
                       <Badge variant="default" className="bg-green-100 text-green-800 text-xs">
@@ -336,7 +336,7 @@ export default function UserPage() {
                     </div>
 
                     {/* Priority Lane Warning - Compact */}
-                    {lane.type === 'PWD_SENIOR' && (
+                    {lane.type === 'PRIORITY' && (
                       <div className="bg-yellow-50 border border-yellow-200 rounded p-2">
                         <div className="flex items-center gap-1">
                           <span className="text-yellow-600 text-sm">⚠️</span>

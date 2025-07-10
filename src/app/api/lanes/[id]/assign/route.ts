@@ -86,17 +86,17 @@ export async function POST(
     })
 
     // Business rule: User can have at most 2 assignments
-    // One REGULAR lane and one PWD_SENIOR lane
+    // One REGULAR lane and one PRIORITY lane
     if (currentAssignments.length >= 2) {
       return NextResponse.json(
-        { error: 'User can only be assigned to a maximum of 2 lanes (1 regular + 1 PWD/Senior)' },
+        { error: 'User can only be assigned to a maximum of 2 lanes (1 regular + 1 Priority)' },
         { status: 400 }
       )
     }
 
     // Check if user already has an assignment of this lane type
     const hasRegularLane = currentAssignments.some(a => a.lane.type === 'REGULAR')
-    const hasPwdSeniorLane = currentAssignments.some(a => a.lane.type === 'PWD_SENIOR')
+    const hasPPriorityLane = currentAssignments.some(a => a.lane.type === 'PRIORITY')
 
     if (lane.type === 'REGULAR' && hasRegularLane) {
       return NextResponse.json(
@@ -105,9 +105,9 @@ export async function POST(
       )
     }
 
-    if (lane.type === 'PWD_SENIOR' && hasPwdSeniorLane) {
+    if (lane.type === 'PRIORITY' && hasPPriorityLane) {
       return NextResponse.json(
-        { error: 'User is already assigned to a PWD/Senior Citizens lane' },
+        { error: 'User is already assigned to a Priority lane' },
         { status: 400 }
       )
     }

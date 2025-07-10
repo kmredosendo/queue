@@ -17,7 +17,7 @@ enum UserRole {
 
 enum LaneType {
   REGULAR
-  PWD_SENIOR // For PWDs and Senior Citizens
+  PRIORITY // For PWDs and Senior Citizens (renamed from PWD_SENIOR)
 }
 
 enum QueueStatus {

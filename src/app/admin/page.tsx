@@ -455,15 +455,15 @@ export default function AdminDashboard() {
       const hasRegular = userAssignments.some(al => 
         lanes.find(l => l.id === al.lane.id)?.type === LaneType.REGULAR
       )
-      const hasPwdSenior = userAssignments.some(al => 
-        lanes.find(l => l.id === al.lane.id)?.type === LaneType.PWD_SENIOR
+      const hasPriority = userAssignments.some(al => 
+        lanes.find(l => l.id === al.lane.id)?.type === LaneType.PRIORITY
       )
       
       // If trying to assign REGULAR lane but user already has one
       if (selectedLane.type === LaneType.REGULAR && hasRegular) return false
       
-      // If trying to assign PWD_SENIOR lane but user already has one
-      if (selectedLane.type === LaneType.PWD_SENIOR && hasPwdSenior) return false
+      // If trying to assign PRIORITY lane but user already has one
+      if (selectedLane.type === LaneType.PRIORITY && hasPriority) return false
       
       return true
     })
@@ -550,12 +550,18 @@ export default function AdminDashboard() {
                   <TableCell className="font-medium">{user.username}</TableCell>
                   <TableCell>{user.name}</TableCell>
                   <TableCell>
-                    <Badge variant={user.role === UserRole.ADMIN ? 'default' : 'secondary'}>
-                      {user.role}
+                    <Badge
+                      variant={user.role === UserRole.ADMIN ? 'default' : 'outline'}
+                      className="text-xs font-semibold px-2.5 py-0.5 rounded-full border border-border"
+                    >
+                      {user.role === UserRole.ADMIN ? 'Admin' : 'User'}
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <Badge variant={user.isActive ? 'default' : 'destructive'}>
+                    <Badge
+                      variant={user.isActive ? 'default' : 'destructive'}
+                      className="text-xs font-semibold px-2.5 py-0.5 rounded-full border border-border"
+                    >
                       {user.isActive ? 'Active' : 'Inactive'}
                     </Badge>
                   </TableCell>
@@ -567,9 +573,12 @@ export default function AdminDashboard() {
                           return (
                             <div key={al.lane.id} className="flex items-center gap-2">
                               <span className="text-sm">{al.lane.name}</span>
-                              <Badge variant={lane?.type === LaneType.PWD_SENIOR ? 'secondary' : 'outline'} className="text-xs">
-                                {lane?.type === LaneType.PWD_SENIOR ? 'PWD/Senior' : 'Regular'}
-                              </Badge>
+                  <Badge
+                    variant={lane?.type === LaneType.PRIORITY ? 'secondary' : 'secondary'}
+                    className={`text-xs font-semibold px-2.5 py-0.5 rounded-full border border-border ${lane?.type === LaneType.PRIORITY ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}`}
+                  >
+                    {lane?.type === LaneType.PRIORITY ? 'Priority' : 'Regular'}
+                  </Badge>
                             </div>
                           )
                         })}
@@ -628,7 +637,6 @@ export default function AdminDashboard() {
                 <TableHead>Type</TableHead>
                 <TableHead>Description</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Current Number</TableHead>
                 <TableHead>Assigned Staff</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
@@ -638,17 +646,22 @@ export default function AdminDashboard() {
                 <TableRow key={lane.id}>
                   <TableCell className="font-medium">{lane.name}</TableCell>
                   <TableCell>
-                    <Badge variant={lane.type === LaneType.PWD_SENIOR ? 'secondary' : 'outline'}>
-                      {lane.type === LaneType.PWD_SENIOR ? 'PWD/Senior' : 'Regular'}
-                    </Badge>
+                  <Badge
+                    variant={lane.type === LaneType.PRIORITY ? 'secondary' : 'secondary'}
+                    className={`text-xs font-semibold px-2.5 py-0.5 rounded-full border border-border ${lane.type === LaneType.PRIORITY ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}`}
+                  >
+                    {lane.type === LaneType.PRIORITY ? 'Priority' : 'Regular'}
+                  </Badge>
                   </TableCell>
                   <TableCell>{lane.description || 'No description'}</TableCell>
                   <TableCell>
-                    <Badge variant={lane.isActive ? 'default' : 'destructive'}>
+                    <Badge
+                      variant={lane.isActive ? 'default' : 'destructive'}
+                      className="text-xs font-semibold px-2.5 py-0.5 rounded-full border border-border"
+                    >
                       {lane.isActive ? 'Active' : 'Inactive'}
                     </Badge>
                   </TableCell>
-                  <TableCell>{lane.currentNumber}</TableCell>
                   <TableCell>
                     <div className="flex flex-col gap-1">
                       {lane.assignedUsers.map(au => (
@@ -794,8 +807,8 @@ export default function AdminDashboard() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={LaneType.REGULAR}>Regular</SelectItem>
-                  <SelectItem value={LaneType.PWD_SENIOR}>PWD/Senior Citizens</SelectItem>
+                <SelectItem value={LaneType.REGULAR}>Regular</SelectItem>
+                <SelectItem value={LaneType.PRIORITY}>Priority</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -827,10 +840,10 @@ export default function AdminDashboard() {
           <DialogHeader>
             <DialogTitle>Assign Staff to {selectedLane?.name}</DialogTitle>
             <DialogDescription>
-              Select a staff member to assign to this {selectedLane?.type === LaneType.PWD_SENIOR ? 'PWD/Senior Citizens' : 'Regular'} lane.
+              Select a staff member to assign to this {selectedLane?.type === LaneType.PRIORITY ? 'Priority' : 'Regular'} lane.
               <br />
               <span className="text-sm text-muted-foreground">
-                Note: Each user can be assigned to maximum 2 lanes (1 Regular + 1 PWD/Senior)
+                Note: Each user can be assigned to maximum 2 lanes (1 Regular + 1 Priority)
               </span>
             </DialogDescription>
           </DialogHeader>
@@ -866,7 +879,7 @@ export default function AdminDashboard() {
               {getAvailableStaff().length === 0 && (
                 <p className="text-sm text-muted-foreground">
                   All eligible staff are either already assigned to this lane, 
-                  have reached the maximum of 2 lane assignments, or already have a {selectedLane?.type === LaneType.PWD_SENIOR ? 'PWD/Senior' : 'Regular'} lane assignment.
+                  have reached the maximum of 2 lane assignments, or already have a {selectedLane?.type === LaneType.PRIORITY ? 'Priority' : 'Regular'} lane assignment.
                 </p>
               )}
             </div>
