@@ -30,7 +30,7 @@ export default function ReservationPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isGettingNumber, setIsGettingNumber] = useState(false)
   const eventSourceRef = useRef<EventSource | null>(null)
-  const [previousLanes, setPreviousLanes] = useState<LaneStatus[]>([])
+  // Removed unused previousLanes state
 
   useEffect(() => {
     fetchLaneStatus()
