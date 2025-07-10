@@ -35,9 +35,9 @@ export async function GET(request: NextRequest) {
           }
         }
       },
-      orderBy: {
-        name: 'asc'
-      }
+      orderBy: [
+        { name: 'asc' }
+      ]
     })
 
     return NextResponse.json(lanes)

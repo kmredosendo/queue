@@ -64,8 +64,9 @@ export async function POST(request: NextRequest) {
           }
         });
         break; // Success
-      } catch (error: any) {
-        if (error.code === 'P2002') {
+      } catch (error) {
+        // Prisma error type
+        if ((error as { code?: string }).code === 'P2002') {
           // Unique constraint failed, try next number
           nextNumber = nextNumber >= 999 ? 1 : nextNumber + 1;
           attempts++;
