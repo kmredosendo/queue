@@ -320,47 +320,41 @@ export default function DisplayPage() {
             <p className="text-2xl text-blue-200">All service lanes are currently closed</p>
           </div>
         ) : (
-          /* Responsive Grid - More Lanes Fit On Screen */
-          <div className={`grid gap-4 ${
-            lanes.length === 1 ? 'grid-cols-1 max-w-2xl mx-auto' :
-            lanes.length === 2 ? 'grid-cols-2' :
-            lanes.length === 3 ? 'grid-cols-2 lg:grid-cols-3' :
-            lanes.length === 4 ? 'grid-cols-2 lg:grid-cols-4' :
-            'grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
-          }`}>
+          // Responsive Grid - Max 3 cards per row
+          <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
             {lanes.map((lane) => (
-              <Card key={lane.id} className="bg-white bg-opacity-10 backdrop-blur-md border-white border-opacity-20 hover:bg-opacity-20 transition-all duration-300">
-                <CardContent className="p-4">
+              <Card key={lane.id} className="bg-white bg-opacity-10 backdrop-blur-md border-white border-opacity-20 hover:bg-opacity-20 transition-all duration-300 p-1">
+                <CardContent className="p-2">
                   {/* Compact Lane Header */}
-                  <div className="flex justify-between items-start mb-3">
+                  <div className="flex justify-between items-start mb-2">
                     <div>
-                      <h3 className="text-2xl font-bold text-white mb-1">
+                      <h3 className="text-lg font-bold text-white mb-0.5">
                         {lane.name}
                       </h3>
                       {lane.description && (
-                        <p className="text-blue-200 text-base">
+                        <p className="text-blue-200 text-xs">
                           {lane.description}
                         </p>
                       )}
                     </div>
-                    <Badge className="bg-green-500 text-white text-sm px-3 py-1">
+                    <Badge className="bg-green-500 text-white text-xs px-2 py-0.5">
                       OPEN
                     </Badge>
                   </div>
 
                   {/* Compact Current Number Display */}
-                  <div className={`bg-black bg-opacity-30 rounded-lg p-6 mb-4 text-center transition-all duration-1000 ${
+                  <div className={`bg-black bg-opacity-30 rounded-lg p-3 mb-2 text-center transition-all duration-1000 ${
                     recentlyUpdatedLanes.has(lane.id) ? 'ring-2 ring-yellow-400 ring-opacity-75 bg-yellow-400 bg-opacity-20' : ''
                   }`}>
-                    <div className="text-blue-200 text-base mb-2">NOW SERVING</div>
-                    <div className={`font-bold mb-2 font-mono transition-all duration-500 ${
+                    <div className="text-blue-200 text-xs mb-1">NOW SERVING</div>
+                    <div className={`font-bold mb-1 font-mono transition-all duration-500 ${
                       recentlyUpdatedLanes.has(lane.id) ? 'text-yellow-300 animate-pulse' : 'text-yellow-400'
-                    }`} style={{ fontSize: '8rem', lineHeight: '1' }}>
-                      {lane.currentNumber === 0 ? '---' : lane.currentNumber.toString().padStart(3, '0')}
+                    }`} style={{ fontSize: '3.5rem', lineHeight: '1' }}>
+                      {lane.currentNumber === 0 ? '000' : lane.currentNumber.toString().padStart(3, '0')}
                     </div>
                     {lane.currentNumber > 0 && (
                       <div className={`${recentlyUpdatedLanes.has(lane.id) ? 'animate-bounce' : 'animate-pulse'}`}>
-                        <div className="text-base text-green-400">
+                        <div className="text-xs text-green-400">
                           🔔 Please proceed to {lane.name}
                         </div>
                       </div>
@@ -368,30 +362,28 @@ export default function DisplayPage() {
                   </div>
 
                   {/* Compact Queue Statistics */}
-                  <div className="grid grid-cols-3 gap-2 mb-3">
-                    <div className="bg-black bg-opacity-20 rounded p-3 text-center">
-                      <div className="text-2xl font-bold text-green-400">
+                  <div className="grid grid-cols-3 gap-1 mb-2">
+                    <div className="bg-black bg-opacity-20 rounded p-1 text-center">
+                      <div className="text-lg font-bold text-green-400">
                         {lane.lastServedNumber}
                       </div>
-                      <div className="text-blue-200 text-sm">
+                      <div className="text-blue-200 text-xs">
                         Last
                       </div>
                     </div>
-                    
-                    <div className="bg-black bg-opacity-20 rounded p-3 text-center">
-                      <div className="text-2xl font-bold text-orange-400">
+                    <div className="bg-black bg-opacity-20 rounded p-1 text-center">
+                      <div className="text-lg font-bold text-orange-400">
                         {lane.waitingCount}
                       </div>
-                      <div className="text-blue-200 text-sm">
+                      <div className="text-blue-200 text-xs">
                         Waiting
                       </div>
                     </div>
-                    
-                    <div className="bg-black bg-opacity-20 rounded p-3 text-center">
-                      <div className="text-2xl font-bold text-purple-400">
+                    <div className="bg-black bg-opacity-20 rounded p-1 text-center">
+                      <div className="text-lg font-bold text-purple-400">
                         {lane.nextNumber}
                       </div>
-                      <div className="text-blue-200 text-sm">
+                      <div className="text-blue-200 text-xs">
                         Next
                       </div>
                     </div>
@@ -399,13 +391,13 @@ export default function DisplayPage() {
 
                   {/* Compact Progress Bar */}
                   <div>
-                    <div className="flex justify-between text-sm text-blue-200 mb-2">
+                    <div className="flex justify-between text-xs text-blue-200 mb-1">
                       <span>Progress</span>
                       <span>{lane.waitingCount} waiting</span>
                     </div>
-                    <div className="w-full bg-black bg-opacity-30 rounded-full h-3">
+                    <div className="w-full bg-black bg-opacity-30 rounded-full h-2">
                       <div 
-                        className="bg-gradient-to-r from-green-400 to-blue-500 h-3 rounded-full transition-all duration-500"
+                        className="bg-gradient-to-r from-green-400 to-blue-500 h-2 rounded-full transition-all duration-500"
                         style={{ 
                           width: lane.nextNumber > 0 
                             ? `${Math.min((lane.currentNumber / lane.nextNumber) * 100, 100)}%` 
