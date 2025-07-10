@@ -29,7 +29,6 @@ export default function ReservationPage() {
   const [lanes, setLanes] = useState<LaneStatus[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isGettingNumber, setIsGettingNumber] = useState(false)
-  const audioRef = useRef<HTMLAudioElement | null>(null)
   const eventSourceRef = useRef<EventSource | null>(null)
   const [previousLanes, setPreviousLanes] = useState<LaneStatus[]>([])
 
@@ -134,31 +133,6 @@ export default function ReservationPage() {
     }
   }
 
-  // Notification sound logic (Web Audio API)
-  useEffect(() => {
-    audioRef.current = new Audio()
-    audioRef.current.volume = 0.8
-    // Create notification sound using Web Audio API
-    const playNotification = () => {
-      const audioContext = new (window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext!)()
-      const frequencies = [800, 1000, 1200]
-      frequencies.forEach((freq, index) => {
-        setTimeout(() => {
-          const osc = audioContext.createOscillator()
-          const gain = audioContext.createGain()
-          osc.connect(gain)
-          gain.connect(audioContext.destination)
-          osc.frequency.setValueAtTime(freq, audioContext.currentTime)
-          gain.gain.setValueAtTime(0.3, audioContext.currentTime)
-          gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5)
-          osc.start(audioContext.currentTime)
-          osc.stop(audioContext.currentTime + 0.5)
-        }, index * 200)
-      })
-    }
-    (audioRef.current as HTMLAudioElement & { playNotification?: () => void }).playNotification = playNotification
-  }, [])
-
   // SSE event listening for queue updates
   useEffect(() => {
     eventSourceRef.current = new EventSource('/api/queue/events')
@@ -177,32 +151,6 @@ export default function ReservationPage() {
       }
     }
   }, [])
-
-  // Play notification when current number changes
-  useEffect(() => {
-    if (previousLanes.length > 0 && lanes.length > 0) {
-      lanes.forEach((currentLane) => {
-        const previousLane = previousLanes.find(pl => pl.id === currentLane.id)
-        if (previousLane && previousLane.currentNumber !== currentLane.currentNumber && currentLane.currentNumber > 0) {
-          const audio = audioRef.current as HTMLAudioElement & { playNotification?: () => void }
-          if (audio && audio.playNotification) {
-            setTimeout(() => {
-              audio.playNotification!()
-            }, 100)
-          }
-        }
-      })
-    }
-    setPreviousLanes(lanes)
-  }, [lanes, previousLanes])
-
-  // const formatEstimatedWait = (minutes: number) => {
-  //   if (minutes < 1) return 'Less than 1 minute'
-  //   if (minutes < 60) return `${minutes} minutes`
-  //   const hours = Math.floor(minutes / 60)
-  //   const remainingMinutes = minutes % 60
-  //   return `${hours}h ${remainingMinutes}m`
-  // }
 
   if (isLoading) {
     return (
