@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+
 import { QueueItemStatus } from '@prisma/client'
+import { broadcastAllLaneData } from '@/lib/broadcast'
 
 export async function POST(request: NextRequest) {
   try {
@@ -51,6 +53,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
+
     // Ensure the next number is not already used for today (handle rare race conditions)
     let attempts = 0;
     let createdItem = null;
@@ -78,6 +81,9 @@ export async function POST(request: NextRequest) {
     if (!createdItem) {
       return NextResponse.json({ error: 'All queue numbers for today are in use. Please contact admin.' }, { status: 400 });
     }
+
+    // Broadcast full lane update to all display clients (SSE)
+    await broadcastAllLaneData();
 
     // Calculate waiting count (people ahead of this person in today's queue)
     const waitingCount = await prisma.queueItem.count({

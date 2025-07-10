@@ -1,3 +1,9 @@
+// Broadcast full lane data to all connections
+export async function broadcastAllLaneData() {
+  for (const controller of connections) {
+    await fetchAndSendLaneData(controller);
+  }
+}
 import { prisma } from '@/lib/prisma'
 
 // SSE broadcast utility for real-time queue updates
