@@ -80,28 +80,27 @@ export default function DisplayPage() {
   useEffect(() => {
     if (previousLanes.length > 0 && lanes.length > 0) {
       const updatedLaneIds = new Set<string>()
-      
       lanes.forEach((currentLane) => {
-        const previousLane = previousLanes.find(pl => pl.id === currentLane.id)
+        const previousLane = previousLanes.find(pl => String(pl.id) === String(currentLane.id))
         if (previousLane && previousLane.currentNumber !== currentLane.currentNumber && currentLane.currentNumber > 0) {
-          updatedLaneIds.add(currentLane.id)
-          
+          updatedLaneIds.add(String(currentLane.id))
           // Play notification sound when number changes
           if (audioRef.current && audioRef.current.playNotification) {
             setTimeout(() => {
               audioRef.current!.playNotification!()
             }, 100)
           }
+          // Debug log for highlight
+          console.log('Highlighting lane', currentLane.id)
         }
       })
-      
       // Set recently updated lanes for visual feedback
       if (updatedLaneIds.size > 0) {
         setRecentlyUpdatedLanes(updatedLaneIds)
-        // Clear the highlight after 3 seconds
+        // Clear the highlight after 4 seconds (longer duration)
         setTimeout(() => {
           setRecentlyUpdatedLanes(new Set())
-        }, 3000)
+        }, 4000)
       }
     }
     setPreviousLanes(lanes)
@@ -323,7 +322,7 @@ export default function DisplayPage() {
           // Responsive Grid - Max 3 cards per row
           <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
             {lanes.map((lane) => (
-              <Card key={lane.id} className="bg-white bg-opacity-10 backdrop-blur-md border-white border-opacity-20 hover:bg-opacity-20 transition-all duration-300 p-1">
+              <Card key={lane.id} className={`bg-white bg-opacity-10 backdrop-blur-md border-white border-opacity-20 hover:bg-opacity-20 transition-all duration-300 p-1 ${recentlyUpdatedLanes.has(String(lane.id)) ? 'ring-4 ring-yellow-400 ring-opacity-90 scale-105 shadow-2xl z-10 animate-[pulse_1s_ease-in-out_2]' : ''}` }>
                 <CardContent className="p-2">
                   {/* Compact Lane Header */}
                   <div className="flex justify-between items-start mb-2">
@@ -344,17 +343,17 @@ export default function DisplayPage() {
 
                   {/* Compact Current Number Display */}
                   <div className={`bg-black bg-opacity-30 rounded-lg p-3 mb-2 text-center transition-all duration-1000 ${
-                    recentlyUpdatedLanes.has(lane.id) ? 'ring-2 ring-yellow-400 ring-opacity-75 bg-yellow-400 bg-opacity-20' : ''
+                    recentlyUpdatedLanes.has(String(lane.id)) ? 'ring-4 ring-yellow-400 ring-opacity-90 bg-yellow-300 bg-opacity-40 scale-105 shadow-2xl animate-[pulse_1s_ease-in-out_2]' : ''
                   }`}>
                     <div className="text-blue-200 text-xs mb-1">NOW SERVING</div>
                     <div className={`font-bold mb-1 font-mono transition-all duration-500 ${
-                      recentlyUpdatedLanes.has(lane.id) ? 'text-yellow-300 animate-pulse' : 'text-yellow-400'
+                      recentlyUpdatedLanes.has(String(lane.id)) ? 'text-yellow-900 animate-bounce' : 'text-yellow-400'
                     }`} style={{ fontSize: '3.5rem', lineHeight: '1' }}>
                       {lane.currentNumber === 0 ? '000' : lane.currentNumber.toString().padStart(3, '0')}
                     </div>
                     {lane.currentNumber > 0 && (
-                      <div className={`${recentlyUpdatedLanes.has(lane.id) ? 'animate-bounce' : 'animate-pulse'}`}>
-                        <div className="text-xs text-green-400">
+                      <div className={`${recentlyUpdatedLanes.has(String(lane.id)) ? 'animate-bounce' : 'animate-pulse'}`}>
+                        <div className="text-xs text-green-900 font-bold">
                           🔔 Please proceed to {lane.name}
                         </div>
                       </div>
