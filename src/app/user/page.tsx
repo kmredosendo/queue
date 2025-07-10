@@ -72,7 +72,15 @@ export default function UserPage() {
       if (response.ok) {
         const data = await response.json()
         const lane = lanes.find(l => l.id === laneId)
-        
+
+        // Play notification sound for every successful operation
+        const audio = audioRef.current as HTMLAudioElement & { playNotification?: () => void }
+        if (audio && audio.playNotification) {
+          setTimeout(() => {
+            audio.playNotification!()
+          }, 100)
+        }
+
         // Immediate feedback for different actions
         switch (action) {
           case 'NEXT':
@@ -92,7 +100,7 @@ export default function UserPage() {
             toast.success(`${lane?.name}: Customer #${data.servedNumber} served`)
             break
         }
-        
+
         // Force immediate refresh
         await fetchLanes()
       } else {

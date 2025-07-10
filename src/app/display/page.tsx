@@ -160,19 +160,19 @@ export default function DisplayPage() {
         eventSourceRef.current.onmessage = (event) => {
           try {
             const data = JSON.parse(event.data)
-            
+
             if (data.type === 'lanes_update') {
               setLanes(data.lanes)
             } else if (data.type === 'operation') {
-              // Handle real-time operation updates
-              if (['CALL', 'BUZZ'].includes(data.action)) {
+              // Always play notification and show visual for any operation (CALL, BUZZ, NEXT, SERVE)
+              if (["CALL", "BUZZ", "NEXT", "SERVE"].includes(data.action)) {
                 // Play notification sound
                 if (audioRef.current && audioRef.current.playNotification) {
                   setTimeout(() => {
                     audioRef.current!.playNotification!()
                   }, 50)
                 }
-                
+
                 // Add visual feedback
                 setRecentlyUpdatedLanes(prev => new Set([...prev, data.laneId.toString()]))
                 setTimeout(() => {
@@ -183,7 +183,7 @@ export default function DisplayPage() {
                   })
                 }, 3000)
               }
-              
+
               // Refresh lane data after operation
               fetchLaneStatus()
             }
