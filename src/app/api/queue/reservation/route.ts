@@ -6,7 +6,9 @@ import { broadcastAllLaneData } from '@/lib/broadcast'
 
 export async function POST(request: NextRequest) {
   try {
-    const { laneId } = await request.json()
+    let { laneId } = await request.json();
+    // Ensure laneId is an integer (Prisma expects Int, not string)
+    if (typeof laneId === 'string') laneId = parseInt(laneId, 10);
 
     if (!laneId) {
       return NextResponse.json(
@@ -26,19 +28,16 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Get today's date range (start and end of day)
-    const today = new Date();
-    const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+    // Use queueDate (UTC midnight) for daily queue logic
+    const now = new Date();
+    const queueDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
 
-    // Find the highest queue number for today for this lane
+
+    // Find the highest queue number for today for this lane (using queueDate)
     const lastQueueItemToday = await prisma.queueItem.findFirst({
       where: {
-        laneId,
-        createdAt: {
-          gte: startOfDay,
-          lt: endOfDay
-        }
+        laneId: laneId,
+        queueDate: queueDate
       },
       orderBy: { number: 'desc' }
     });
@@ -63,6 +62,7 @@ export async function POST(request: NextRequest) {
           data: {
             laneId,
             number: nextNumber,
+            queueDate: queueDate,
             status: QueueItemStatus.WAITING
           }
         });
@@ -93,20 +93,18 @@ export async function POST(request: NextRequest) {
         number: {
           lt: nextNumber
         },
-        createdAt: {
-          gte: startOfDay,
-          lt: endOfDay
-        }
+        queueDate: queueDate
       }
     })
 
-    return NextResponse.json({
+    const responseObj = {
       queueNumber: nextNumber,
       laneName: lane.name,
       currentNumber: lane.currentNumber,
       waitingCount: waitingCount,
       estimatedWait: waitingCount * 5 // Assume 5 minutes per person
-    }, { status: 201 })
+    };
+    return NextResponse.json(responseObj, { status: 201 })
   } catch (error) {
     console.error('Get queue number error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
@@ -115,10 +113,9 @@ export async function POST(request: NextRequest) {
 
 export async function GET() {
   try {
-    // Get today's date range (start and end of day)
-    const today = new Date()
-    const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate())
-    const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1)
+    // Use queueDate (UTC midnight) for daily queue logic
+    const now = new Date();
+    const queueDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
 
     // Get current queue status for all active lanes (today's data only)
     const lanes = await prisma.lane.findMany({
@@ -129,10 +126,7 @@ export async function GET() {
         description: true,
         queueItems: {
           where: {
-            createdAt: {
-              gte: startOfDay,
-              lt: endOfDay
-            }
+            queueDate: queueDate
           },
           select: {
             number: true,

@@ -113,13 +113,15 @@ export default function ReservationPage() {
 
       if (response.ok) {
         const data = await response.json()
-        
-        // Print ticket silently
-        await printTicket(data)
-        
-        // Show success message
+        // Always use the queueNumber from the POST response for ticket and confirmation
+        await printTicket({
+          queueNumber: data.queueNumber,
+          laneName: data.laneName,
+          currentNumber: data.currentNumber,
+          waitingCount: data.waitingCount,
+          estimatedWait: data.estimatedWait
+        })
         toast.success(`Queue number ${data.queueNumber} assigned for ${data.laneName}! Ticket printing...`)
-        
         fetchLaneStatus() // Refresh status
       } else {
         const data = await response.json()

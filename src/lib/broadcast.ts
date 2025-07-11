@@ -42,6 +42,10 @@ export function getConnectionCount() {
 // Fetch and send lane data to a specific connection
 export async function fetchAndSendLaneData(controller: ReadableStreamDefaultController) {
   try {
+    // Use queueDate (UTC midnight) for daily queue logic
+    const now = new Date();
+    const queueDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+
     // Fetch current lane status
     const lanes = await prisma.lane.findMany({
       where: { isActive: true },
@@ -52,33 +56,48 @@ export async function fetchAndSendLaneData(controller: ReadableStreamDefaultCont
         currentNumber: true,
         lastServedNumber: true,
       }
-    })
+    });
 
-    // Calculate queue statistics for each lane
+    // Calculate queue statistics for each lane (today only)
     const laneStatuses = await Promise.all(
       lanes.map(async (lane) => {
         const [waitingCount, calledCount] = await Promise.all([
           prisma.queueItem.count({
             where: {
               laneId: lane.id,
-              status: 'WAITING'
+              status: 'WAITING',
+              queueDate: queueDate
             }
           }),
           prisma.queueItem.count({
             where: {
               laneId: lane.id,
-              status: 'CALLED'
+              status: 'CALLED',
+              queueDate: queueDate
             }
           })
-        ])
+        ]);
 
-        const nextQueueItem = await prisma.queueItem.findFirst({
+        // Find the lowest waiting number for today
+        // ...existing code...
+
+        // Find the highest number for today
+        const lastQueueItemToday = await prisma.queueItem.findFirst({
           where: {
             laneId: lane.id,
-            status: 'WAITING'
+            queueDate: queueDate
           },
-          orderBy: { number: 'asc' }
-        })
+          orderBy: { number: 'desc' }
+        });
+
+        let nextNumber = 1;
+        if (lastQueueItemToday) {
+          if (lastQueueItemToday.number >= 999) {
+            nextNumber = 1;
+          } else {
+            nextNumber = lastQueueItemToday.number + 1;
+          }
+        }
 
         return {
           id: lane.id.toString(),
@@ -88,10 +107,10 @@ export async function fetchAndSendLaneData(controller: ReadableStreamDefaultCont
           lastServedNumber: lane.lastServedNumber,
           waitingCount,
           calledCount,
-          nextNumber: nextQueueItem?.number || (lane.currentNumber === 0 ? 1 : lane.currentNumber + 1)
-        }
+          nextNumber
+        };
       })
-    )
+    );
 
     const message = `data: ${JSON.stringify({ type: 'lanes_update', lanes: laneStatuses })}\n\n`
     controller.enqueue(new TextEncoder().encode(message))
