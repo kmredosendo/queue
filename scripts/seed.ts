@@ -48,72 +48,61 @@ async function main() {
   })
   console.log('✅ Created cashier user:', cashier2.username)
 
-  // Create sample lanes
-  const customerService = await prisma.lane.create({
+  // Create lanes as specified
+  const cashier1Lane = await prisma.lane.create({
     data: {
-      name: 'Customer Service',
-      description: 'General customer inquiries and support',
+      name: 'Cashier 1',
+      description: 'Cashier 1',
       type: LaneType.REGULAR,
       isActive: true,
     },
   })
-  console.log('✅ Created lane:', customerService.name)
+  console.log('✅ Created lane:', cashier1Lane.name)
 
-  const billing = await prisma.lane.create({
+  const cashier2Lane = await prisma.lane.create({
     data: {
-      name: 'Billing & Payments',
-      description: 'Payment processing and billing inquiries',
+      name: 'Cashier 2',
+      description: 'Cashier 2',
       type: LaneType.REGULAR,
       isActive: true,
     },
   })
-  console.log('✅ Created lane:', billing.name)
+  console.log('✅ Created lane:', cashier2Lane.name)
 
-  const pwdSenior = await prisma.lane.create({
+  const pwdSeniorLane = await prisma.lane.create({
     data: {
-      name: 'PWD/Senior Citizens',
+      name: 'PWD/Senior',
       description: 'Priority lane for PWDs and Senior Citizens',
       type: LaneType.PRIORITY,
       isActive: true,
     },
   })
-  console.log('✅ Created lane:', pwdSenior.name)
+  console.log('✅ Created lane:', pwdSeniorLane.name)
 
-  const technical = await prisma.lane.create({
-    data: {
-      name: 'Technical Support',
-      description: 'Technical assistance and troubleshooting',
-      type: LaneType.REGULAR,
-      isActive: true,
-    },
-  })
-  console.log('✅ Created lane:', technical.name)
-
-  // Assign cashiers to lanes
+  // Assignments
   await prisma.laneUser.create({
     data: {
       userId: cashier.id,
-      laneId: customerService.id,
+      laneId: cashier1Lane.id,
     },
   })
-  console.log('✅ Assigned', cashier.name, 'to', customerService.name)
+  console.log('✅ Assigned', cashier.name, 'to', cashier1Lane.name)
 
   await prisma.laneUser.create({
     data: {
       userId: cashier2.id,
-      laneId: billing.id,
+      laneId: cashier2Lane.id,
     },
   })
-  console.log('✅ Assigned', cashier2.name, 'to', billing.name)
+  console.log('✅ Assigned', cashier2.name, 'to', cashier2Lane.name)
 
-  // Assign cashier1 to PWD/Senior lane as well (demonstrating multi-lane assignment)
   await prisma.laneUser.create({
     data: {
       userId: cashier.id,
-      laneId: pwdSenior.id,
+      laneId: pwdSeniorLane.id,
     },
   })
-  console.log('✅ Assigned', cashier.name, 'to', pwdSenior.name)
+  console.log('✅ Assigned', cashier.name, 'to', pwdSeniorLane.name)
 
   console.log('🎉 Seed completed successfully!')
 }
