@@ -348,7 +348,7 @@ export default function DisplayPage() {
                     <div className="text-blue-200 text-xs mb-1">NOW SERVING</div>
                     <div className={`font-bold mb-1 font-mono transition-all duration-500 ${
                       recentlyUpdatedLanes.has(String(lane.id)) ? 'text-yellow-900 animate-bounce' : 'text-yellow-400'
-                    }`} style={{ fontSize: '3.5rem', lineHeight: '1' }}>
+                    }`} style={{ fontSize: '10rem', lineHeight: '1' }}>
                       {lane.currentNumber === 0 ? '000' : lane.currentNumber.toString().padStart(3, '0')}
                     </div>
                     {lane.currentNumber > 0 && (
