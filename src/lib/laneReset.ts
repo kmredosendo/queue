@@ -3,7 +3,7 @@ import { prisma } from './prisma';
 let lastResetDate: string | null = null;
 
 export async function resetLaneNumbersOncePerDay() {
-  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  const today = new Date().toISOString().slice(0, 10);
   if (lastResetDate === today) return;
 
   // Check if already reset today (in case of multiple serverless instances)
