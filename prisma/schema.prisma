@@ -117,3 +117,9 @@ model QueueOperation {
 
   @@map("queue_operations")
 }
+
+model Setting {
+  key   String @id
+  value String
+  @@map("settings")
+}

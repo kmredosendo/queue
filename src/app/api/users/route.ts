@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { hashPassword, getCurrentUser, hasRole } from '@/lib/auth'
+import { resetLaneNumbersOncePerDay } from '@/lib/laneReset'
 import { UserRole } from '@prisma/client'
 
 export async function GET(request: NextRequest) {
   try {
+    await resetLaneNumbersOncePerDay();
     const currentUser = await getCurrentUser(request)
     if (!currentUser || !hasRole(currentUser.role, [UserRole.ADMIN])) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

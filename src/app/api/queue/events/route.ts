@@ -1,8 +1,10 @@
 import { NextRequest } from 'next/server'
 import { addConnection, removeConnection, fetchAndSendLaneData } from '@/lib/broadcast'
+import { resetLaneNumbersOncePerDay } from '@/lib/laneReset'
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function GET(request: NextRequest) {
+  await resetLaneNumbersOncePerDay();
   // Set up Server-Sent Events headers
   const responseHeaders = new Headers({
     'Content-Type': 'text/event-stream',

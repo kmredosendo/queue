@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { resetLaneNumbersOncePerDay } from '@/lib/laneReset'
 
 import { QueueItemStatus } from '@prisma/client'
 import { broadcastAllLaneData } from '@/lib/broadcast'
@@ -113,6 +114,7 @@ export async function POST(request: NextRequest) {
 
 export async function GET() {
   try {
+    await resetLaneNumbersOncePerDay();
     // Use queueDate (UTC midnight) for daily queue logic
     const now = new Date();
     const queueDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
