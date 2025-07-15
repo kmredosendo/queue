@@ -36,7 +36,9 @@ const essentialItems = [
   'tsconfig.json',
   'postcss.config.mjs',
   'components.json',
-  'eslint.config.mjs'
+  'eslint.config.mjs',
+  path.join('scripts', 'resetLaneNumbers.ts'),
+  path.join('scripts', 'seed.ts')
 ];
 
 // Ensure completely clean production build by removing existing folder
