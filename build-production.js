@@ -69,12 +69,23 @@ if (dirContents.length === 0) {
   console.log('   ⚠️  Warning: Production directory not empty:', dirContents);
 }
 
+// Ensure scripts subdirectory exists in production before copying script files
+const productionScriptsDir = path.join(productionDir, 'scripts');
+if (!fs.existsSync(productionScriptsDir)) {
+  fs.mkdirSync(productionScriptsDir, { recursive: true });
+  console.log('   ✅ production/scripts directory created');
+}
+
 // Copy essential files and directories
 console.log('📋 Copying essential files...');
 essentialItems.forEach(item => {
   const sourcePath = path.join(sourceDir, item);
   const destPath = path.join(productionDir, item);
-  
+  // Ensure parent directory exists for file
+  const parentDir = path.dirname(destPath);
+  if (!fs.existsSync(parentDir)) {
+    fs.mkdirSync(parentDir, { recursive: true });
+  }
   if (fs.existsSync(sourcePath)) {
     if (fs.statSync(sourcePath).isDirectory()) {
       copyDirectory(sourcePath, destPath);
