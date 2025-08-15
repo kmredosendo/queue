@@ -143,8 +143,8 @@ MIT
 If you find this project useful, consider supporting me:
 
 - 💖 [GitHub Sponsors](https://github.com/sponsors/kmredosendo)
-- ☕ [Buy Me a Coffee](https://buymeacoffee.com/arbitex)
-- 🎁 [Ko-fi](https://ko-fi.com/arbitex)
+- ☕ [Buy Me a Coffee](https://buymeacoffee.com/kmredosendo)
+- 🎁 [Ko-fi](https://ko-fi.com/kmredosendo)
 
 Your support keeps this project alive and maintained!
 
